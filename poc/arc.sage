@@ -11,12 +11,13 @@ PresentationInputs = namedtuple("PresentationInputs", "U U_prime_commit m_commit
 PresentationProofInputs = namedtuple("PresentationProofInputs", "V r z")
 
 class Presentation(object):
-    def __init__(self, U, U_prime_commit, m1_commit, nonce, tag, proof):
+    def __init__(self, U, U_prime_commit, m1_commit, tag, nonce_commit, D, proof):
         self.U = U
         self.U_prime_commit = U_prime_commit
         self.m1_commit = m1_commit
-        self.nonce = nonce
         self.tag = tag
+        self.nonce_commit = nonce_commit
+        self.D = D
         self.proof = proof
 
 class Credential(object):
@@ -31,10 +32,10 @@ class PresentationState(object):
         self.credential = credential
         self.presentation_context = presentation_context
         self.presentation_limit = presentation_limit
-        self.presentation_nonce_set = []
+        self.next_nonce = 0
 
     def present(self, rng, vectors):
-        if len(self.presentation_nonce_set) >= self.presentation_limit:
+        if self.next_nonce >= self.presentation_limit:
             raise Exception("LimitExceededError")
 
         a = G.random_scalar(rng)
@@ -46,18 +47,20 @@ class PresentationState(object):
         U_prime_commit = U_prime + r * GenG
         m1_commit = self.credential.m1 * U + z * GenH
 
-        # Note: this should be randomized, but it starts
-        # at 0 and increments for determinism's sake
-        nonce = len(self.presentation_nonce_set)
-        self.presentation_nonce_set.append(nonce)
+        # This step mutates the state by incrementing next_nonce
+        nonce = self.next_nonce
+        self.next_nonce += 1
+
+        # Create Pedersen commitment to the nonce
+        nonce_blinding = G.random_scalar(rng)
+        nonce_commit = nonce * GenG + nonce_blinding * GenH
 
         generator_T = hash_to_group(self.presentation_context, to_bytes("Tag"))
         tag = inverse_mod(self.credential.m1 + nonce, GroupP256().order()) * generator_T
         V = (z * self.credential.X1) - (r * GenG)
-        m1_tag = self.credential.m1 * tag
-        
-        proof = PresentationProof.prove(U, U_prime_commit, m1_commit, tag, generator_T, self.credential, V, r, z, nonce, m1_tag, rng, vectors)
-        presentation = Presentation(U, U_prime_commit, m1_commit, nonce, tag, proof)
+
+        proof, D = PresentationProof.prove(U, U_prime_commit, m1_commit, tag, generator_T, self.credential, V, r, z, nonce, nonce_blinding, nonce_commit, self.presentation_limit, rng, vectors)
+        presentation = Presentation(U, U_prime_commit, m1_commit, tag, nonce_commit, D, proof)
 
         vectors["presentation_context"] = to_hex(self.presentation_context)
         vectors["a"] = to_hex(G.serialize_scalar(a))
@@ -67,7 +70,12 @@ class PresentationState(object):
         vectors["U_prime_commit"] = to_hex(G.serialize(U_prime_commit))
         vectors["m1_commit"] = to_hex(G.serialize(m1_commit))
         vectors["nonce"] = hex(nonce)
+        vectors["nonce_blinding"] = to_hex(G.serialize_scalar(nonce_blinding))
+        vectors["nonce_commit"] = to_hex(G.serialize(nonce_commit))
         vectors["tag"] = to_hex(G.serialize(tag))
+        # Store D commitments
+        for i, D_i in enumerate(D):
+            vectors["D_{}".format(i)] = to_hex(G.serialize(D_i))
         vectors["proof"] = to_hex(proof.serialize())
 
         return presentation
@@ -211,11 +219,7 @@ class Server(object):
         return response
     
     def verify_presentation(self, private_key, public_key, request_context, presentation_context, presentation, presentation_limit):
-        if presentation.nonce < 0 or presentation.nonce >= presentation_limit:
-            raise Exception("InvalidNonce")
-        
         generator_T = hash_to_group(presentation_context, to_bytes("Tag"))
-        m1_tag = generator_T - (presentation.nonce * presentation.tag)
-        return PresentationProof.verify(private_key, public_key, request_context, presentation_context, presentation, m1_tag)
+        return PresentationProof.verify(private_key, public_key, request_context, presentation_context, presentation, presentation_limit)
 
 

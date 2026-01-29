@@ -1,5 +1,6 @@
 from sagelib.arc_groups import GenG, GenH, hash_to_group, hash_to_scalar, context_string
 from sagelib.zkp import Prover, Verifier
+from sagelib.range_proof import MakeRangeProofHelper, VerifyRangeProofHelper
 from util import to_bytes
 
 class CredentialRequestProof(object):
@@ -164,13 +165,14 @@ class CredentialResponseProof(object):
 
 class PresentationProof(object):
     @classmethod
-    def prove(cls, U, U_prime_commit, m1_commit, tag, generator_T, credential, V, r, z, nonce, m1_tag, rng, vectors):
+    def prove(cls, U, U_prime_commit, m1_commit, tag, generator_T, credential, V, r, z, nonce, nonce_blinding, nonce_commit, presentation_limit, rng, vectors):
         prover = Prover(context_string + "CredentialPresentation", rng, vectors)
 
         m1_var = prover.append_scalar("m1", credential.m1)
         z_var = prover.append_scalar("z", z)
         r_neg_var = prover.append_scalar("-r", -r)
         nonce_var = prover.append_scalar("nonce", nonce)
+        nonce_blinding_var = prover.append_scalar("nonceBlinding", nonce_blinding)
 
         gen_G_var = prover.append_element("genG", GenG)
         gen_H_var = prover.append_element("genH", GenH)
@@ -181,21 +183,26 @@ class PresentationProof(object):
         X1_var = prover.append_element("X1", credential.X1)
         tag_var = prover.append_element("tag", tag)
         gen_T_var = prover.append_element("genT", generator_T)
-        m1_tag_var = prover.append_element("m1Tag", m1_tag)
+        nonce_commit_var = prover.append_element("nonceCommit", nonce_commit)
 
         # 1. m1Commit = m1 * U + z * generatorH
         prover.constrain(m1_commit_var, [(m1_var, U_var), (z_var, gen_H_var)])
         # 2. V = z * X1 - r * generatorG
         prover.constrain(V_var, [(z_var, X1_var), (r_neg_var, gen_G_var)])
-        # 3. G.HashToGroup(presentationContext, "Tag") = m1 * tag + counter * tag
+        # 3. nonceCommit = nonce * generatorG + nonceBlinding * generatorH
+        prover.constrain(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
+        # 4. G.HashToGroup(presentationContext, "Tag") = m1 * tag + nonce * tag
         prover.constrain(gen_T_var, [(m1_var, tag_var), (nonce_var, tag_var)])
-        # 4. m1Tag = m1 * tag
-        prover.constrain(m1_tag_var, [(m1_var, tag_var)])
 
-        return prover.prove()
+        # 5. Add range proof constraints
+        (prover, D) = MakeRangeProofHelper(prover, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var)
+
+        # Generate the joint proof
+        proof = prover.prove()
+        return (proof, D)
 
     @classmethod
-    def verify(cls, server_private_key, server_public_key, request_context, presentation_context, presentation, m1_tag):
+    def verify(cls, server_private_key, server_public_key, request_context, presentation_context, presentation, presentation_limit):
         verifier = Verifier(context_string + "CredentialPresentation")
 
         m2 = hash_to_scalar(request_context, to_bytes("requestContext"))
@@ -206,6 +213,7 @@ class PresentationProof(object):
         z_var = verifier.append_scalar("z")
         r_neg_var = verifier.append_scalar("-r")
         nonce_var = verifier.append_scalar("nonce")
+        nonce_blinding_var = verifier.append_scalar("nonceBlinding")
 
         gen_G_var = verifier.append_element("genG", GenG)
         gen_H_var = verifier.append_element("genH", GenH)
@@ -216,15 +224,21 @@ class PresentationProof(object):
         X1_var = verifier.append_element("X1", server_public_key.X1)
         tag_var = verifier.append_element("tag", presentation.tag)
         gen_T_var = verifier.append_element("genT", generator_T)
-        m1_tag_var = verifier.append_element("m1Tag", m1_tag)
+        nonce_commit_var = verifier.append_element("nonceCommit", presentation.nonce_commit)
 
         # 1. m1Commit = m1 * U + z * generatorH
         verifier.constrain(m1_commit_var, [(m1_var, U_var), (z_var, gen_H_var)])
         # 2. V = z * X1 - r * generatorG
         verifier.constrain(V_var, [(z_var, X1_var), (r_neg_var, gen_G_var)])
-        # 3. G.HashToGroup(presentationContext, "Tag") = m1 * tag + counter * tag
+        # 3. nonceCommit = nonce * generatorG + nonceBlinding * generatorH
+        verifier.constrain(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
+        # 4. G.HashToGroup(presentationContext, "Tag") = m1 * tag + nonce * tag
         verifier.constrain(gen_T_var, [(m1_var, tag_var), (nonce_var, tag_var)])
-        # 4. Statements for the range proof that counter is in [0, rateLimit)
-        verifier.constrain(m1_tag_var, [(m1_var, tag_var)])
 
+        # 5. Add range proof constraints and verify the sum of the nonceCommit bit commitments
+        (verifier, sum_valid) = VerifyRangeProofHelper(verifier, presentation.D, presentation.nonce_commit, presentation_limit, gen_G_var, gen_H_var)
+        if not sum_valid:
+            return False
+
+        # Verify the joint proof
         return verifier.verify(presentation.proof)
