@@ -64,7 +64,7 @@ def test_nonce_exceeds_limit():
         bad_presentation = Presentation(U, U_prime_commit, m1_commit, tag, nonce_commit, D, proof)
 
         # This should fail verification
-        result = issuer.verify_presentation(private_key, public_key, request_context_str,
+        result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
                                            presentation_context, bad_presentation, presentation_limit)
 
         if result:
@@ -118,7 +118,7 @@ def test_invalid_bit_decomposition():
         )
 
         # This should fail verification
-        result = issuer.verify_presentation(private_key, public_key, request_context_str,
+        result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
                                            presentation_context, tampered_presentation, presentation_limit)
 
         if result:
@@ -168,7 +168,7 @@ def test_invalid_nonce_commitment():
     )
 
     # This should fail verification
-    result = issuer.verify_presentation(private_key, public_key, request_context_str,
+    result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
                                        presentation_context, tampered_presentation, presentation_limit)
 
     if result:
@@ -255,7 +255,7 @@ def test_exceed_presentation_limit():
     # Create exactly presentation_limit presentations
     for i in range(presentation_limit):
         presentation = state.present(rng, {})
-        result = issuer.verify_presentation(private_key, public_key, request_context_str,
+        result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
                                            presentation_context, presentation, presentation_limit)
         if not result:
             print("  FAILED: Valid presentation {} did not verify!".format(i))
@@ -311,7 +311,7 @@ def test_tampered_presentation():
         valid_presentation.D,
         valid_presentation.proof
     )
-    result = issuer.verify_presentation(private_key, public_key, request_context_str,
+    result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
                                        presentation_context, tampered_U, presentation_limit)
     if not result:
         print("    - Tampered U: PASSED")
@@ -331,7 +331,7 @@ def test_tampered_presentation():
         valid_presentation.D,
         valid_presentation.proof
     )
-    result = issuer.verify_presentation(private_key, public_key, request_context_str,
+    result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
                                        presentation_context, tampered_m1, presentation_limit)
     if not result:
         print("    - Tampered m1_commit: PASSED")
@@ -351,7 +351,7 @@ def test_tampered_presentation():
         valid_presentation.D,
         valid_presentation.proof
     )
-    result = issuer.verify_presentation(private_key, public_key, request_context_str,
+    result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
                                        presentation_context, tampered_tag, presentation_limit)
     if not result:
         print("    - Tampered tag: PASSED")

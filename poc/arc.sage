@@ -220,6 +220,7 @@ class Server(object):
     
     def verify_presentation(self, private_key, public_key, request_context, presentation_context, presentation, presentation_limit):
         generator_T = hash_to_group(presentation_context, to_bytes("Tag"))
-        return PresentationProof.verify(private_key, public_key, request_context, presentation_context, presentation, presentation_limit)
+        validity = PresentationProof.verify(private_key, public_key, request_context, presentation_context, presentation, presentation_limit)
+        return validity, presentation.tag
 
 
