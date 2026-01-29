@@ -60,8 +60,7 @@ class Prover(ProofParticipant):
         return ScalarVar(len(self.scalars) - 1)
 
     def prove(self):
-        # blindings = [G.random_scalar(self.rng) for i in range(len(self.scalars))]
-        blindings = [i+1 for i in range(len(self.scalars))]
+        blindings = [G.random_scalar(self.rng) for i in range(len(self.scalars))]
         for i, b in enumerate(blindings):
             self.vectors["Blinding_{}".format(i)] = to_hex(G.serialize_scalar(b))
         return self.prove_with_randomness(blindings)
