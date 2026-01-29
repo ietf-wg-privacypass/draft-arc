@@ -650,7 +650,7 @@ Outputs:
 - presentationLimit: Integer, the fixed presentation limit.
 
 def MakePresentationState(credential, presentationContext, presentationLimit):
-  return PresentationState(credential, presentationContext, -1, presentationLimit)
+  return PresentationState(credential, presentationContext, 0, presentationLimit)
 
 4.3.2.  Presentation Construction
 
