@@ -65,10 +65,8 @@ rate limiting. ARC credentials can be presented from client to server up to
 some fixed number of times, where each presentation is cryptographically bound
 to client secrets and application-specific public information, such that each
 presentation is unlinkable from the others as well as the original credential
-creation. The nonce value used in each presentation is hidden in a Pedersen commitment
-with an accompanying range proof, ensuring that servers cannot link presentations,
-while still enforcing the presentation limit. ARC is useful in applications where
-a server needs to throttle or rate-limit access from anonymous clients.
+creation. ARC is useful in applications where a server needs to throttle or
+rate-limit access from anonymous clients.
 
 --- middle
 
@@ -283,7 +281,7 @@ def SetupServer():
   return ServerPrivateKey(x0, x1, x2, x0Blinding), ServerPublicKey(X0, X1, X2)
 ~~~
 
-The server public keys can be serialized as follows:
+The server public key can be serialized as follows:
 
 ~~~
 struct {
@@ -526,7 +524,8 @@ This phase consists of three steps:
    The presentation is cryptographically bound to the state's presentation context, and
    contains proof that the presentation is valid with respect to the presentation context.
    Moreover, the presentation contains proof that the nonce (an integer) associated with this
-   presentation is within the presentation limit.
+   presentation is within the presentation limit. The nonce value used in each presentation
+   is hidden in a Pedersen commitment, ensuring servers cannot link presentations using the nonce.
 1. The server verifies the presentation with respect to the presentation context and presentation
    limit.
 
@@ -555,11 +554,11 @@ Inputs:
 Outputs:
 - credential
 - presentationContext: Data (public), used for presentation tag computation.
-- presentationNonceSet: {Integer}, the set of nonces that have been used for this presentation
+- nextNonce: Integer, the next nonce that can be used. This increments by 1 for each use.
 - presentationLimit: Integer, the fixed presentation limit.
 
 def MakePresentationState(credential, presentationContext, presentationLimit):
-  return PresentationState(credential, presentationContext, [], presentationLimit)
+  return PresentationState(credential, presentationContext, -1, presentationLimit)
 ~~~
 
 ### Presentation Construction {#presentation-construction}
@@ -579,7 +578,7 @@ Inputs:
 state: input PresentationState
   - credential
   - presentationContext: Data (public), used for presentation tag computation.
-  - presentationNonceSet: {Integer}, the set of nonces that have been used for this presentation
+  - nextNonce: Integer, the next nonce that can be used. This increments by 1 for each use.
   - presentationLimit: Integer, the fixed presentation limit.
 
 Outputs:
@@ -603,7 +602,7 @@ Exceptions:
 - LimitExceededError, raised when the presentation count meets or exceeds the presentation limit for the given presentation context
 
 def Present(state):
-  if len(state.presentationNonceSet) >= state.presentationLimit:
+  if state.nextNonce >= state.presentationLimit:
     raise LimitExceededError
 
   a = G.RandomScalar()
@@ -615,11 +614,9 @@ def Present(state):
   UPrimeCommit = UPrime + r * generatorG
   m1Commit = state.credential.m1 * U + z * generatorH
 
-  # This step mutates the state by keeping track of
-  # what nonces have already been spent.
-  nonce = random_integer_uniform_excluding_set(0,
-    state.presentationLimit, state.presentationNonceSet)
-  state.presentationNonceSet.add(nonce)
+  # This step mutates the state by incrementing the nextNonce by 1.
+  nonce = state.nextNonce
+  state.nextNonce += 1
 
   # Create Pedersen commitment to the nonce
   nonceBlinding = G.RandomScalar()
@@ -659,18 +656,18 @@ struct {
 struct {
   uint8 challenge[Ns];
   // Variable length based on presentation variables plus range proof variables
-  uint8 responses[(5 + 3*ceil(log2(presentationLimit)))][Ns];
+  uint8 responses[5 + 3*ceil(log2(presentationLimit))][Ns];
 } PresentationProof
 ~~~
 
 The length of the Presentation structure is `Npresentation = 5*Ne + ceil(log2(presentationLimit))*Ne + Npresentationproof`.
-`Npresentationproof = Ns + (5 + 3*ceil(log2(presentationLimit))) * Ns`, which includes the challenge (Ns) and the response scalars for both presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3*ceil(log2(presentationLimit)) scalars: b[i], s[i], s2[i] for each bit). The D commitments are separate in the Presentation structure.
+`Npresentationproof = (6 + 3*ceil(log2(presentationLimit))) * Ns`, which includes the challenge (Ns) and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3*ceil(log2(presentationLimit)) scalars: b[i], s[i], s2[i] for each bit). The D commitments are separate in the Presentation structure.
 
 ### Presentation Verification
 
 The server processes the presentation by verifying the integrated presentation proof, which includes
 verification of the range proof, against server-computed values. Note that the server does not receive
-the raw nonce value, only the commitment to it.
+the raw nonce value, only the Pedersen commitment to it.
 
 ~~~
 validity, tag = VerifyPresentation(
@@ -1086,7 +1083,7 @@ def VerifyCredentialRequestProof(request):
   # 2. m2Enc = m2 * generatorG + r2 * generatorH
   verifier.Constrain(m2EncVar, [(m2Var, genGVar), (r2Var, genHVar)])
 
-  return verifier.Verify(request.proof)
+  return verifier.Verify(request.requestProof)
 ~~~
 
 ## CredentialResponse Proof {#response-proof}
@@ -1306,12 +1303,12 @@ def VerifyCredentialResponseProof(serverPublicKey, response, request):
   # simplified: encUPrime = b * X0 + t1 * m1Enc + t2 * m2Enc, since t1 = b * x1 and t2 = b * x2
   verifier.Constrain(encUPrimeVar, [(bVar, X0Var), (t1Var, m1EncVar), (t2Var, m2EncVar)])
 
-  return verifier.Verify(response.proof)
+  return verifier.Verify(response.responseProof)
 ~~~
 
 ## Presentation Proof {#presentation-proof}
 
-The presentation proof is a proof of knowledge of (m1, r, z, nonce, nonceBlinding) used in the presentation.
+The presentation proof is a proof of knowledge of (m1, r, z, nonce, nonceBlinding) used in the presentation, as well as a proof that nonce is in the range [0, presentationLimit).
 
 Statements to prove:
 
@@ -1324,6 +1321,8 @@ Statements to prove:
 3. nonceCommit = nonce * generatorG + nonceBlinding * generatorH
 # The tag was correctly computed using m1 and the nonce
 4. G.HashToGroup(presentationContext, "Tag") = m1 * tag + nonce * tag
+# The nonce is in the range [0, presentationLimit)
+5. constraints added in the range proof helpers {#range-proof}
 ~~~
 
 ### Presentation Proof Creation
@@ -1390,11 +1389,9 @@ def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT, credential
   prover.Constrain(nonceCommitVar, [(nonceVar, genGVar), (nonceBlindingVar, genHVar)])
   # 4. G.HashToGroup(presentationContext, "Tag") = m1 * tag + nonce * tag
   prover.Constrain(genTVar, [(m1Var, tagVar), (nonceVar, tagVar)])
-
-  # Add range proof constraints
-  (prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, nonceCommit,
-                                      nonceVar, nonceBlindingVar, nonceCommitVar,
-                                      presentationLimit)
+  # 5. Add range proof constraints
+  (prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
+                                     genGVar, genHVar)
 
   # Generate the joint proof
   presentationProof = prover.Prove()
@@ -1484,10 +1481,9 @@ def VerifyPresentationProof(
   verifier.Constrain(nonceCommitVar, [(nonceVar, genGVar), (nonceBlindingVar, genHVar)])
   # 4. G.HashToGroup(presentationContext, "Tag") = m1 * tag + nonce * tag
   verifier.Constrain(genTVar, [(m1Var, tagVar), (nonceVar, tagVar)])
-
-  # Add range proof constraints and verify the sum
+  # 5. Add range proof constraints and verify the sum of the nonceCommit bit commitments
   (verifier, sumValid) = VerifyRangeProofHelper(verifier, presentation.D, presentation.nonceCommit,
-                                                  nonceCommitVar, presentationLimit)
+                                                presentationLimit, genGVar, genHVar)
   if not sumValid:
     return False
 
@@ -1497,64 +1493,64 @@ def VerifyPresentationProof(
 
 ## Range Proof for Arbitrary Values {#range-proof}
 
-This section specifies a range proof in the framework of
-{{!SIGMA=I-D.draft-irtf-cfrg-sigma-protocols-00}} to prove a secret value `v` lies
-in an arbitrary interval `[0,upper_bound)`. Before specifying the proof system, we first
-give a brief overview of how it works. For simplicity, assume that `upper_bound` is a
-power of two, that is, `upper_bound == 2^k` for some `k`.
+This section specifies a range proof to prove a secret value `nonce` lies
+in an arbitrary interval `[0, presentationLimit)`. Before specifying the proof system, we first
+give a brief overview of how it works. For simplicity, assume that `presentationLimit` is a
+power of two, that is, `presentationLimit == 2^k` for some `k`.
 
 To prove a value lies in `[0,(2^k)-1)`, we prove it has a valid `k`-bit representation.
-This is proven by committing to the full value `v`, then all bits of the bit decomposition
-`b` of the value `v`, and then proving each coefficient of the bit decomposition is
-actually `0` or `1` and that the sum of the bits amounts to the full value `v`.  This involves the following steps:
+This is proven by committing to the full value `nonce`, then all bits of the bit decomposition
+`b` of the value `nonce`, and then proving each coefficient of the bit decomposition is
+actually `0` or `1` and that the sum of the bits amounts to the full value `nonce`.
+This involves the following steps:
 
-1. Commit to the bits of `v`. That is, for each bit `b[i]` of the bit decomposition of `v`, let
-`D[i] = b[i] * generatorG + s[i] * generatorH`, where `s[i]` is a blinding scalar.
+1. Commit to the bits of `nonce`. That is, for each bit `b[i]` of the bit decomposition of `nonce`,
+let `D[i] = b[i] * generatorG + s[i] * generatorH`, where `s[i]` is a blinding scalar.
 2. Prove that `b[i]` is in `{0,1}` by proving the algebraic relation `b[i] *
 (b[i]-1) == 0` holds. This quadratic relation can be linearized by
 adding an auxilary witness `s2[i]` and adding the linear relation
 `D[i] == b[i] * D[i] + s2[i] * generatorH` to the equation system. A valid witness `s2[i]` can only
 be computed by the prover if `b[i]` is in `{0,1}`. Successfully computing a witness for
 any other value requires the prover to break the discrete logarithm problem.
-3. Having verified the proof the above relation, the verifier checks the sum by computing
+3. Having verified the proof the above relation, the verifier checks that the sum of the bit
+commitments is equal to the sum of the commmitment to `nonce`:
 
 ~~~
-C == D[0] * 2^0 + D[1] * 2^1 + D[2] * 2^2 + ... + D[k-1] * 2^{k-1}
+nonceCommit == D[0] * 2^0 + D[1] * 2^1 + D[2] * 2^2 + ... + D[k-1] * 2^{k-1}
 ~~~
 
 The third step is verified outside of the proof by adding the commitments
 homomorphically.
 
-To support the general case, where `upper_bound` is not necessarily a power of two,
+To support the general case, where `presentationLimit` is not necessarily a power of two,
 we extend the range proof for arbitrary ranges by decomposing the range
 up to the second highest power of two and adding an additional, non-binary range that
 covers the remaining range. This is detailed in `ComputeBases` below.
 
 ~~~
-def ComputeBases(upper_bound):
+bases = ComputeBases(presentationLimit)
 
 Inputs:
-
-- upper_bound: the maximum value of the range (exclusive), as integer.
+- presentationLimit: Integer, the maximum value of the range (exclusive).
 
 Outputs:
-
 - bases: an array of Scalar bases to represent elements, sorted in descending order. A base is
   either a power of two or a unique remainder that can be used to represent any integer
-  in [0, upper_bound).
+  in [0, presentationLimit).
 
-# compute bases to express the commitment as a linear combination of the bit decomposition
-remainder=upper_bound
-bases=[]
-# Generate all but the last power-of-two base.
-for i in range(ceil(log2(upper_bound)) - 1):
-    base = 2 ** i
-    remainder -= base
-    bases.append(G.Scalar(base))
-bases.append(remainder - 1)
+def ComputeBases(presentationLimit):
+  # compute bases to express the commitment as a linear combination of the bit decomposition
+  remainder=presentationLimit
+  bases=[]
+  # Generate all but the last power-of-two base.
+  for i in range(ceil(log2(presentationLimit)) - 1):
+      base = 2 ** i
+      remainder -= base
+      bases.append(G.Scalar(base))
+  bases.append(remainder - 1)
 
-# call sorted on array to ensure the additional base is in correct order
-return sorted(bases, reverse=True)
+  # call sorted on array to ensure the additional base is in correct order
+  return sorted(bases, reverse=True)
 ~~~
 
 ### Range Proof Creation {#range-proof-creation}
@@ -1566,19 +1562,16 @@ range proof. This helper function is called from within `MakePresentationProof` 
 range proof constraints to the presentation proof statement.
 
 ~~~
-(prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, nonceCommit,
-                                    nonceVar, nonceBlindingVar, nonceCommitVar,
-                                    presentationLimit)
+(prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
+                                   genGVar, genHVar)
 
 Inputs:
 - prover: Prover statement to which constraints will be added
 - nonce: Integer, the nonce value to prove is in range
 - nonceBlinding: Scalar, the blinding factor for the nonce commitment
-- nonceCommit: Element, the Pedersen commitment to the nonce
-- nonceVar: Integer, variable index for nonce in the statement
-- nonceBlindingVar: Integer, variable index for nonceBlinding in the statement
-- nonceCommitVar: Integer, variable index for nonceCommit in the statement
-- presentationLimit: Integer, the upper bound of the range (exclusive)
+- presentationLimit: Integer, the maximum value of the range (exclusive).
+- genGVar: Integer, variable index for generator G
+- genHVar: Integer, variable index for generator H
 
 Outputs:
 - prover: Modified prover statement with range proof constraints added
@@ -1589,19 +1582,18 @@ Parameters:
 - generatorG: Element, equivalent to G.GeneratorG()
 - generatorH: Element, equivalent to G.GeneratorH()
 
-def MakeRangeProofHelper(prover, nonce, nonceBlinding, nonceCommit,
-                          nonceVar, nonceBlindingVar, nonceCommitVar,
-                          presentationLimit):
+def MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
+                         genGVar, genHVar):
 
   # Compute bit decomposition and commitments
   bases = ComputeBases(presentationLimit)
 
   # Compute bit decomposition of nonce
   b = []
-  v_remainder = nonce
+  remainder = nonce
   for base in bases:
-    if v_remainder >= G.ScalarToInt(base):
-      v_remainder -= G.ScalarToInt(base)
+    if remainder >= G.ScalarToInt(base):
+      remainder -= G.ScalarToInt(base)
       b.append(G.Scalar(1))
     else:
       b.append(G.Scalar(0))
@@ -1616,6 +1608,8 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, nonceCommit,
     partial_sum += bases[i] * s[i]
     s2.append((G.Scalar(1) - b[i]) * s[i])
     D.append(b[i] * generatorG + s[i] * generatorH)
+  # Blinding value for the last bit commitment is chosen strategically
+  # so that all the bit commitments will sum up to nonceCommit.
   idx = len(bases) - 1
   s.append(G.ScalarInverse(bases[idx]) * (nonceBlinding - partial_sum))
   s2.append((G.Scalar(1) - b[idx]) * s[idx])
@@ -1634,10 +1628,7 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, nonceCommit,
   for i in range(len(s2)):
     vars_s2.append(prover.AppendScalar("s2" + str(i), s2[i]))
 
-  # Append element variables
-  genGVar = prover.AppendElement("genG", generatorG)
-  genHVar = prover.AppendElement("genH", generatorH)
-
+  # Append element variables for bit commitments D
   vars_D = []
   for i in range(len(D)):
     vars_D.append(prover.AppendElement("D" + str(i), D[i]))
@@ -1649,26 +1640,22 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, nonceCommit,
     # D[i] = b[i] * D[i] + s2[i] * generatorH (proves b[i] is in {0,1})
     prover.Constrain(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], genHVar)])
 
-  # Add constraint that nonceCommit = sum(bases[i] * D[i])
-  sum_terms = []
-  for i in range(len(bases)):
-    sum_terms.append((bases[i], vars_D[i]))
-  prover.Constrain(nonceCommitVar, sum_terms)
-
   return (prover, D)
 ~~~
 
 ### Range Proof Verification
 
 ~~~
-(verifier, validity) = VerifyRangeProofHelper(verifier, D, nonceCommit, nonceCommitVar, presentationLimit)
+(verifier, sumValid) = VerifyRangeProofHelper(verifier, D, nonceCommit, presentationLimit,
+                                              genGVar, genHVar)
 
 Inputs:
 - verifier: Verifier statement to which constraints will be added
 - D: [Element], array of commitments to the bit decomposition of nonceCommit
 - nonceCommit: Element, the Pedersen commitment to the nonce
-- nonceCommitVar: Integer, variable index for nonceCommit in the statement
-- presentationLimit: Integer, the upper bound of the range (exclusive)
+- presentationLimit: Integer, the maximum value of the range (exclusive).
+- genGVar: Integer, variable index for generator G
+- genHVar: Integer, variable index for generator H
 
 Outputs:
 - verifier: Modified verifier statement with range proof constraints added
@@ -1679,7 +1666,8 @@ Parameters:
 - generatorG: Element, equivalent to G.GeneratorG()
 - generatorH: Element, equivalent to G.GeneratorH()
 
-def VerifyRangeProofHelper(verifier, D, nonceCommit, nonceCommitVar, presentationLimit):
+def VerifyRangeProofHelper(verifier, D, nonceCommit, presentationLimit,
+                           genGVar, genHVar):
 
   bases = ComputeBases(presentationLimit)
   num_bits = len(bases)
@@ -1697,16 +1685,12 @@ def VerifyRangeProofHelper(verifier, D, nonceCommit, nonceCommitVar, presentatio
   for i in range(num_bits):
     vars_s2.append(verifier.AppendScalar("s2" + str(i)))
 
-  # Append element variables
-  genGVar = verifier.AppendElement("genG", generatorG)
-  genHVar = verifier.AppendElement("genH", generatorH)
-
-  # Use the D commitments from the range proof
+  # Append element variables for bit commitments D
   vars_D = []
   for i in range(num_bits):
     vars_D.append(verifier.AppendElement("D" + str(i), D[i]))
 
-  # Add the same constraints as the prover
+  # Add constraints proving each b[i] is in {0,1}
   for i in range(num_bits):
     # D[i] = b[i] * generatorG + s[i] * generatorH
     verifier.Constrain(vars_D[i], [(vars_b[i], genGVar), (vars_s[i], genHVar)])
@@ -1719,8 +1703,8 @@ def VerifyRangeProofHelper(verifier, D, nonceCommit, nonceCommitVar, presentatio
   for i in range(len(bases)):
     sum_D = sum_D + bases[i] * D[i]
 
-  validity = (sum_D == nonceCommit)
-  return (verifier, validity)
+  sumValid = (sum_D == nonceCommit)
+  return (verifier, sumValid)
 ~~~
 
 # Ciphersuites {#ciphersuites}
