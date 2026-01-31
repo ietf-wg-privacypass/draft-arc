@@ -17,8 +17,8 @@
 /versioned/
 Gemfile.lock
 archive.json
-draft-yun-cfrg-arc.xml
-draft-yun-privacypass-arc.xml
+draft-ietf-privacypass-arc-crypto.xml
+draft-ietf-privacypass-arc-protocol.xml
 package-lock.json
 report.xml
 !requirements.txt

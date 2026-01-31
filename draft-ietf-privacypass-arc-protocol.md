@@ -3,7 +3,7 @@ title: "Privacy Pass Issuance Protocol for Anonymous Rate-Limited Credentials"
 abbrev: "Privacy Pass Issuance Protocol for ARC"
 category: std
 
-docname: draft-privacypass-arc-protocol-latest
+docname: draft-ietf-privacypass-arc-protocol-latest
 submissiontype: IETF
 consensus: true
 number:
@@ -15,7 +15,7 @@ venue:
   mail: privacy-pass@ietf.org
   arch: https://mailarchive.ietf.org/arch/browse/privacy-pass
   github: ietf-wg-privacypass/draft-arc
-  latest: https://ietf-wg-privacypass.github.io/draft-arc/draft-privacypass-arc-issuance.html
+  latest: https://ietf-wg-privacypass.github.io/draft-arc/draft-ietf-privacypass-arc-protocol.html
 
 author:
  -
@@ -35,7 +35,7 @@ author:
     email: armfazh@cloudflare.com
 
 normative:
-  ARC: I-D.draft-privacypass-arc-crypto
+  ARC: I-D.draft-yun-privacypass-crypto-arc
   ARCHITECTURE: RFC9576
   AUTHSCHEME: RFC9577
   ISSUANCE: RFC9578
