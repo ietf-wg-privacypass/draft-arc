@@ -4,17 +4,17 @@ This is the working area for the following Internet Drafts.
 
 ## Anonymous Rate-Limited Credentials Cryptography
 
-* [Editor's Copy](https://ietf-wg-privacypass.github.io/draft-arc/#go.draft-privacypass-arc-crypto.html)
-* [Datatracker Page](https://datatracker.ietf.org/doc/draft-privacypass-arc-crypto/)
-* [Individual Draft](https://datatracker.ietf.org/doc/html/draft-privacypass-arc-crypto)
-* [Compare Editor's Copy to Individual Draft](https://ietf-wg-privacypass.github.io/draft-arc/#go.draft-privacypass-arc-crypto.diff)
+* [Editor's Copy](https://ietf-wg-privacypass.github.io/draft-arc/#go.draft-ietf-privacypass-arc-crypto.html)
+* [Datatracker Page](https://datatracker.ietf.org/doc/draft-ietf-privacypass-arc-crypto/)
+* [Individual Draft](https://datatracker.ietf.org/doc/html/draft-ietf-privacypass-arc-crypto)
+* [Compare Editor's Copy to Individual Draft](https://ietf-wg-privacypass.github.io/draft-arc/#go.draft-ietf-privacypass-arc-crypto.diff)
 
 ## Privacy Pass Issuance Protocol for Anonymous Rate-Limited Credentials
 
-* [Editor's Copy](https://ietf-wg-privacypass.github.io/draft-arc/#go.draft-privacypass-arc-protocol.html)
-* [Datatracker Page](https://datatracker.ietf.org/doc/draft-privacypass-arc-protocol)
-* [Individual Draft](https://datatracker.ietf.org/doc/html/draft-privacypass-arc-protocol)
-* [Compare Editor's Copy to Individual Draft](https://ietf-wg-privacypass.github.io/draft-arc/#go.draft-privacypass-arc-protocol.diff)
+* [Editor's Copy](https://ietf-wg-privacypass.github.io/draft-arc/#go.draft-ietf-privacypass-arc-protocol.html)
+* [Datatracker Page](https://datatracker.ietf.org/doc/draft-ietf-privacypass-arc-protocol)
+* [Individual Draft](https://datatracker.ietf.org/doc/html/draft-ietf-privacypass-arc-protocol)
+* [Compare Editor's Copy to Individual Draft](https://ietf-wg-privacypass.github.io/draft-arc/#go.draft-ietf-privacypass-arc-protocol.diff)
 
 
 ## Contributing
