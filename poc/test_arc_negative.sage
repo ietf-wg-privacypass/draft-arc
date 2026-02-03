@@ -57,11 +57,11 @@ def test_nonce_exceeds_limit():
         V = (z * credential.X1) - (r * GenG)
 
         # Try to create proof with bad nonce
-        proof, D = PresentationProof.prove(U, U_prime_commit, m1_commit, tag, generator_T,
+        proof = PresentationProof.prove(U, U_prime_commit, m1_commit, tag, generator_T,
                                            credential, V, r, z, bad_nonce, nonce_blinding,
                                            nonce_commit, presentation_limit, rng, {})
 
-        bad_presentation = Presentation(U, U_prime_commit, m1_commit, tag, nonce_commit, D, proof)
+        bad_presentation = Presentation(U, U_prime_commit, m1_commit, tag, nonce_commit, proof)
 
         # This should fail verification
         result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
@@ -101,11 +101,18 @@ def test_invalid_bit_decomposition():
     valid_presentation = state.present(rng, {})
 
     # Tamper with D commitments (change one commitment)
-    tampered_D = list(valid_presentation.D)
+    tampered_D = list(valid_presentation.proof.D)
     if len(tampered_D) > 0:
         # Create a random element by multiplying generator by random scalar
         random_scalar = G.random_scalar(rng)
         tampered_D[0] = random_scalar * GenG  # Replace with random element
+
+        # Create tampered proof with modified D
+        tampered_proof = PresentationProof(
+            tampered_D,
+            valid_presentation.proof.challenge,
+            valid_presentation.proof.responses
+        )
 
         tampered_presentation = Presentation(
             valid_presentation.U,
@@ -113,8 +120,7 @@ def test_invalid_bit_decomposition():
             valid_presentation.m1_commit,
             valid_presentation.tag,
             valid_presentation.nonce_commit,
-            tampered_D,
-            valid_presentation.proof
+            tampered_proof
         )
 
         # This should fail verification
@@ -163,7 +169,6 @@ def test_invalid_nonce_commitment():
         valid_presentation.m1_commit,
         valid_presentation.tag,
         bad_nonce_commit,
-        valid_presentation.D,
         valid_presentation.proof
     )
 
@@ -308,7 +313,6 @@ def test_tampered_presentation():
         valid_presentation.m1_commit,
         valid_presentation.tag,
         valid_presentation.nonce_commit,
-        valid_presentation.D,
         valid_presentation.proof
     )
     result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
@@ -328,7 +332,6 @@ def test_tampered_presentation():
         random_scalar * GenG,  # Replace with random element
         valid_presentation.tag,
         valid_presentation.nonce_commit,
-        valid_presentation.D,
         valid_presentation.proof
     )
     result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,
@@ -348,7 +351,6 @@ def test_tampered_presentation():
         valid_presentation.m1_commit,
         random_scalar * GenG,  # Replace with random element
         valid_presentation.nonce_commit,
-        valid_presentation.D,
         valid_presentation.proof
     )
     result, _ = issuer.verify_presentation(private_key, public_key, request_context_str,

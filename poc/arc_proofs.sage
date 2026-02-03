@@ -1,5 +1,5 @@
-from sagelib.arc_groups import GenG, GenH, hash_to_group, hash_to_scalar, context_string
-from sagelib.zkp import Prover, Verifier
+from sagelib.arc_groups import G, GenG, GenH, hash_to_group, hash_to_scalar, context_string
+from sagelib.zkp import Prover, Verifier, Proof
 from sagelib.range_proof import MakeRangeProofHelper, VerifyRangeProofHelper
 from util import to_bytes
 
@@ -164,6 +164,21 @@ class CredentialResponseProof(object):
         return verifier.verify(response.response_proof)
 
 class PresentationProof(object):
+    def __init__(self, D, challenge, responses):
+        self.D = D
+        self.challenge = challenge
+        self.responses = responses
+
+    def serialize(self):
+        # Serialize D array first, then challenge, then responses
+        output = b''
+        for D_i in self.D:
+            output += G.serialize(D_i)
+        output += G.serialize_scalar(self.challenge)
+        for response in self.responses:
+            output += G.serialize_scalar(response)
+        return output
+
     @classmethod
     def prove(cls, U, U_prime_commit, m1_commit, tag, generator_T, credential, V, r, z, nonce, nonce_blinding, nonce_commit, presentation_limit, rng, vectors):
         prover = Prover(context_string + "CredentialPresentation", rng, vectors)
@@ -198,8 +213,10 @@ class PresentationProof(object):
         (prover, D) = MakeRangeProofHelper(prover, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var)
 
         # Generate the joint proof
-        proof = prover.prove()
-        return (proof, D)
+        proof_scalars = prover.prove()
+
+        # Return PresentationProof object containing D, challenge, and responses
+        return cls(D, proof_scalars.challenge, proof_scalars.responses)
 
     @classmethod
     def verify(cls, server_private_key, server_public_key, request_context, presentation_context, presentation, presentation_limit):
@@ -236,9 +253,10 @@ class PresentationProof(object):
         verifier.constrain(gen_T_var, [(m1_var, tag_var), (nonce_var, tag_var)])
 
         # 5. Add range proof constraints and verify the sum of the nonceCommit bit commitments
-        (verifier, sum_valid) = VerifyRangeProofHelper(verifier, presentation.D, presentation.nonce_commit, presentation_limit, gen_G_var, gen_H_var)
+        (verifier, sum_valid) = VerifyRangeProofHelper(verifier, presentation.proof.D, presentation.nonce_commit, presentation_limit, gen_G_var, gen_H_var)
         if not sum_valid:
             return False
 
-        # Verify the joint proof
-        return verifier.verify(presentation.proof)
+        # Verify the joint proof - create a Proof object from the PresentationProof
+        proof_to_verify = Proof(presentation.proof.challenge, presentation.proof.responses)
+        return verifier.verify(proof_to_verify)

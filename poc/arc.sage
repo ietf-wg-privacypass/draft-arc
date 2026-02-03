@@ -11,14 +11,13 @@ PresentationInputs = namedtuple("PresentationInputs", "U U_prime_commit m_commit
 PresentationProofInputs = namedtuple("PresentationProofInputs", "V r z")
 
 class Presentation(object):
-    def __init__(self, U, U_prime_commit, m1_commit, tag, nonce_commit, D, proof):
+    def __init__(self, U, U_prime_commit, m1_commit, tag, nonce_commit, proof):
         self.U = U
         self.U_prime_commit = U_prime_commit
         self.m1_commit = m1_commit
         self.tag = tag
         self.nonce_commit = nonce_commit
-        self.D = D
-        self.proof = proof
+        self.proof = proof  # proof now contains D
 
 class Credential(object):
     def __init__(self, m1, U, U_prime, X1):
@@ -59,8 +58,8 @@ class PresentationState(object):
         tag = inverse_mod(self.credential.m1 + nonce, GroupP256().order()) * generator_T
         V = (z * self.credential.X1) - (r * GenG)
 
-        proof, D = PresentationProof.prove(U, U_prime_commit, m1_commit, tag, generator_T, self.credential, V, r, z, nonce, nonce_blinding, nonce_commit, self.presentation_limit, rng, vectors)
-        presentation = Presentation(U, U_prime_commit, m1_commit, tag, nonce_commit, D, proof)
+        proof = PresentationProof.prove(U, U_prime_commit, m1_commit, tag, generator_T, self.credential, V, r, z, nonce, nonce_blinding, nonce_commit, self.presentation_limit, rng, vectors)
+        presentation = Presentation(U, U_prime_commit, m1_commit, tag, nonce_commit, proof)
 
         vectors["presentation_context"] = to_hex(self.presentation_context)
         vectors["a"] = to_hex(G.serialize_scalar(a))
@@ -73,8 +72,8 @@ class PresentationState(object):
         vectors["nonce_blinding"] = to_hex(G.serialize_scalar(nonce_blinding))
         vectors["nonce_commit"] = to_hex(G.serialize(nonce_commit))
         vectors["tag"] = to_hex(G.serialize(tag))
-        # Store D commitments
-        for i, D_i in enumerate(D):
+        # Store D commitments from proof
+        for i, D_i in enumerate(proof.D):
             vectors["D_{}".format(i)] = to_hex(G.serialize(D_i))
         vectors["proof"] = to_hex(proof.serialize())
 

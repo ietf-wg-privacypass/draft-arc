@@ -590,8 +590,7 @@ Outputs:
   - m1Commit: Element, a public key to the client secret (m1).
   - tag: Element, the tag element used for enforcing the presentation limit.
   - nonceCommit: Element, a Pedersen commitment to the nonce.
-  - D: [Element], array of commitments to the bit decomposition of nonceCommit
-  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).
+  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit). This proof includes D, an array of commitments to the bit decomposition of the nonce.
 
 Parameters:
 - G: Group
@@ -627,11 +626,11 @@ def Present(state):
   V = z * state.credential.X1 - r * generatorG
 
   # Generate presentation proof with integrated range proof
-  (presentationProof, D) = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
+  presentationProof = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
                                                    state.credential, V, r, z, nonce,
                                                    nonceBlinding, nonceCommit, state.presentationLimit)
 
-  presentation = (U, UPrimeCommit, m1Commit, tag, nonceCommit, D, presentationProof)
+  presentation = (U, UPrimeCommit, m1Commit, tag, nonceCommit, presentationProof)
 
   return state, nonce, presentation
 ~~~
@@ -649,19 +648,19 @@ struct {
   uint8 m1Commit[Ne];
   uint8 tag[Ne];
   uint8 nonceCommit[Ne];
-  uint8 D[ceil(log2(presentationLimit))][Ne];
   PresentationProof presentationProof;
 } Presentation
 
 struct {
+  uint8 D[ceil(log2(presentationLimit))][Ne];
   uint8 challenge[Ns];
   // Variable length based on presentation variables plus range proof variables
   uint8 responses[5 + 3*ceil(log2(presentationLimit))][Ns];
 } PresentationProof
 ~~~
 
-The length of the Presentation structure is `Npresentation = 5*Ne + ceil(log2(presentationLimit))*Ne + Npresentationproof`.
-`Npresentationproof = (6 + 3*ceil(log2(presentationLimit))) * Ns`, which includes the challenge (Ns) and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3*ceil(log2(presentationLimit)) scalars: b[i], s[i], s2[i] for each bit). The D commitments are separate in the Presentation structure.
+The length of the Presentation structure is `Npresentation = 5*Ne + Npresentationproof`.
+`Npresentationproof = ceil(log2(presentationLimit))*Ne + (6 + 3*ceil(log2(presentationLimit))) * Ns`, which includes the D commitments (ceil(log2(presentationLimit))*Ne), the challenge (Ns), and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3*ceil(log2(presentationLimit)) scalars: b[i], s[i], s2[i] for each bit).
 
 ### Presentation Verification
 
@@ -696,8 +695,7 @@ Inputs:
   - m1Commit: Element, a public key to the client secret (m1).
   - tag: Element, the tag element used for enforcing the presentation limit.
   - nonceCommit: Element, a Pedersen commitment to the nonce.
-  - D: [Element], array of commitments to the bit decomposition of nonceCommit
-  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).
+  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit). This proof includes D, an array of commitments to the bit decomposition of the nonce.
 - presentationLimit: Integer, the fixed presentation limit.
 
 Outputs:
@@ -1328,7 +1326,7 @@ Statements to prove:
 ### Presentation Proof Creation
 
 ~~~
-(presentationProof, D) = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT, credential, V, r, z, nonce, nonceBlinding, nonceCommit, presentationLimit)
+presentationProof = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT, credential, V, r, z, nonce, nonceBlinding, nonceCommit, presentationLimit)
 
 Inputs:
 - U: Element, re-randomized from the U in the response.
@@ -1351,9 +1349,9 @@ Inputs:
 
 Outputs:
 - presentationProof: ZKProof, a joint proof covering both presentation and range proof
+  - D: [Element], array of commitments to the bit decomposition of the nonce
   - challenge: Scalar, the challenge used in the proof of valid presentation.
   - responses: [Scalar], array of response scalars for all variables (presentation + range proof)
-- D: [Element], array of commitments to the bit decomposition of nonceCommit
 
 Parameters:
 - G: Group
