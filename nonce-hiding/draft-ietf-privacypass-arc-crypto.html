@@ -7,6 +7,7 @@
 <title>Anonymous Rate-Limited Credentials Cryptography</title>
 <meta content="Cathie Yun" name="author">
 <meta content="Christopher A. Wood" name="author">
+<meta content="Armando Faz-Hernandez" name="author">
 <meta content="
        This document specifies the Anonymous Rate-Limited Credential (ARC) protocol,
 a specialization of keyed-verification anonymous credentials with support for
@@ -18,7 +19,7 @@ creation. ARC is useful in applications where a server needs to throttle or
 rate-limit access from anonymous clients. 
     " name="description">
 <meta content="xml2rfc 3.31.0" name="generator">
-<meta content="draft-privacypass-arc-crypto-latest" name="ietf.draft">
+<meta content="draft-ietf-privacypass-arc-crypto-latest" name="ietf.draft">
 <!-- Generator version information:
   xml2rfc 3.31.0
     Python 3.12.12
@@ -33,7 +34,7 @@ rate-limit access from anonymous clients.
     requests 2.32.5
     wcwidth 0.3.0
 -->
-<link href="draft-privacypass-arc-crypto.xml" rel="alternate" type="application/rfc+xml">
+<link href="draft-ietf-privacypass-arc-crypto.xml" rel="alternate" type="application/rfc+xml">
 <link href="#copyright" rel="license">
 <style type="text/css">@font-face {
   font-family: 'Lora';
@@ -1054,7 +1055,7 @@ svg :is([fill="white"], [fill^="#fff"]) {
 <td class="right">February 2026</td>
 </tr></thead>
 <tfoot><tr>
-<td class="left">Yun &amp; Wood</td>
+<td class="left">Yun, et al.</td>
 <td class="center">Expires 7 August 2026</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
@@ -1065,7 +1066,7 @@ svg :is([fill="white"], [fill^="#fff"]) {
 <dt class="label-workgroup">Workgroup:</dt>
 <dd class="workgroup">Network Working Group</dd>
 <dt class="label-internet-draft">Internet-Draft:</dt>
-<dd class="internet-draft">draft-privacypass-arc-crypto-latest</dd>
+<dd class="internet-draft">draft-ietf-privacypass-arc-crypto-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
 <time datetime="2026-02-03" class="published">3 February 2026</time>
@@ -1083,6 +1084,10 @@ svg :is([fill="white"], [fill^="#fff"]) {
 <div class="author">
       <div class="author-name">C. A. Wood</div>
 <div class="org">Apple, Inc.</div>
+</div>
+<div class="author">
+      <div class="author-name">A. Faz-Hernandez</div>
+<div class="org">Cloudflare</div>
 </div>
 </dd>
 </dl>
@@ -1105,8 +1110,8 @@ rate-limit access from anonymous clients.<a href="#section-abstract-1" class="pi
       </h2>
 <p id="section-note.1-1">This note is to be removed before publishing as an RFC.<a href="#section-note.1-1" class="pilcrow">¶</a></p>
 <p id="section-note.1-2">
-        The latest revision of this draft can be found at <span><a href="https://ietf-wg-privacypass.github.io/draft-arc/draft-privacypass-arc-crypto.html">https://ietf-wg-privacypass.github.io/draft-arc/draft-privacypass-arc-crypto.html</a></span>.
-        Status information for this document may be found at <span><a href="https://datatracker.ietf.org/doc/draft-privacypass-arc-crypto/">https://datatracker.ietf.org/doc/draft-privacypass-arc-crypto/</a></span>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+        The latest revision of this draft can be found at <span><a href="https://ietf-wg-privacypass.github.io/draft-arc/draft-ietf-privacypass-arc-crypto.html">https://ietf-wg-privacypass.github.io/draft-arc/draft-ietf-privacypass-arc-crypto.html</a></span>.
+        Status information for this document may be found at <span><a href="https://datatracker.ietf.org/doc/draft-ietf-privacypass-arc-crypto/">https://datatracker.ietf.org/doc/draft-ietf-privacypass-arc-crypto/</a></span>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
 <p id="section-note.1-3">
         Discussion of this document takes place on the
         PRIVACYPASS Privacy Pass mailing list (<span><a href="mailto:privacy-pass@ietf.org">mailto:privacy-pass@ietf.org</a></span>),
@@ -3723,6 +3728,14 @@ e6593a02c9826fb337f26706922de2a1e7f7f93b45b1c0afa8e09abad10a4fea1a48
 <div class="email">
 <span>Email:</span>
 <a href="mailto:caw@heapingbits.net" class="email">caw@heapingbits.net</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Armando Faz-Hernandez</span></div>
+<div dir="auto" class="left"><span class="org">Cloudflare</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:armfazh@cloudflare.com" class="email">armfazh@cloudflare.com</a>
 </div>
 </address>
 </section>
