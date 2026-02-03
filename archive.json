@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-02-01T01:41:17.737261+00:00",
+  "timestamp": "2026-02-03T01:21:39.542895+00:00",
   "repo": "ietf-wg-privacypass/draft-arc",
   "labels": [
     {
@@ -3036,26 +3036,42 @@
       "id": "PR_kwDONyB6uM7Ai2UK",
       "title": "Update draft names to include \"IETF\", update links",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/pull/54",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "cathieyun",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "This PR fixes:\r\n- Naming errors: I previously named the specs `draft-privacypass-arc-*` but left out the `ietf`. This updates all the names to be `draft-ietf-privacypass-arc-*` instead.\r\n- Also updates the links to point to the right place, once the names and tags are updated.\r\n\r\nFollow-up work:\r\n1. After this PR is merged, tag it with `draft-ietf-privacypass-arc-crypto-00`\r\n2. Then, open another PR to update the Datatracker ID reference in `-protocol` to point to that new tag for the `-crypto` spec. (I can't do that in this PR, because the tag does not yet exist)\r\n3. Merge that PR, then tag it with `draft-ietf-privacypass-arc-protocol-00`\r\n4. Also, get Armando added as a code owner (maybe need to add him to the `ietf-wg-privacypass` group?) and add him to the CODEOWNERS file.\r\n5. Delete the incorrect tags from the `draft-arc` repo :)",
       "createdAt": "2026-01-31T08:08:31Z",
-      "updatedAt": "2026-01-31T08:08:43Z",
+      "updatedAt": "2026-02-02T16:19:15Z",
       "baseRepository": "ietf-wg-privacypass/draft-arc",
       "baseRefName": "main",
       "baseRefOid": "565b8f63f17b8889fb169b1e9536b062059dec99",
       "headRepository": "ietf-wg-privacypass/draft-arc",
       "headRefName": "rename-ietf",
       "headRefOid": "c4ddfa35ca2e29e499a107676ec4e4428461a1ae",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2026-02-02T16:19:14Z",
+      "mergedAt": "2026-02-02T16:19:14Z",
+      "mergedBy": "chris-wood",
+      "mergeCommit": {
+        "oid": "940715dfd721b070cadc7bd6bccd9fc1d0874c0e"
+      },
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDONyB6uM7e850c",
+          "commit": {
+            "abbreviatedOid": "c4ddfa3"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2026-02-02T16:19:09Z",
+          "updatedAt": "2026-02-02T16:19:09Z",
+          "comments": []
+        }
+      ]
     }
   ]
 }
