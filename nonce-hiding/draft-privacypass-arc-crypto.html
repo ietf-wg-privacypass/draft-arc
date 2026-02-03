@@ -1051,11 +1051,11 @@ svg :is([fill="white"], [fill^="#fff"]) {
 <thead><tr>
 <td class="left">Internet-Draft</td>
 <td class="center">ARC Cryptography</td>
-<td class="right">January 2026</td>
+<td class="right">February 2026</td>
 </tr></thead>
 <tfoot><tr>
 <td class="left">Yun &amp; Wood</td>
-<td class="center">Expires 2 August 2026</td>
+<td class="center">Expires 7 August 2026</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1068,12 +1068,12 @@ svg :is([fill="white"], [fill^="#fff"]) {
 <dd class="internet-draft">draft-privacypass-arc-crypto-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-01-29" class="published">29 January 2026</time>
+<time datetime="2026-02-03" class="published">3 February 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Informational</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2026-08-02">2 August 2026</time></dd>
+<dd class="expires"><time datetime="2026-08-07">7 August 2026</time></dd>
 <dt class="label-authors">Authors:</dt>
 <dd class="authors">
 <div class="author">
@@ -1134,7 +1134,7 @@ rate-limit access from anonymous clients.<a href="#section-abstract-1" class="pi
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 2 August 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 7 August 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1958,8 +1958,7 @@ Outputs:
   - m1Commit: Element, a public key to the client secret (m1).
   - tag: Element, the tag element used for enforcing the presentation limit.
   - nonceCommit: Element, a Pedersen commitment to the nonce.
-  - D: [Element], array of commitments to the bit decomposition of nonceCommit
-  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).
+  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit). This proof includes D, an array of commitments to the bit decomposition of the nonce.
 
 Parameters:
 - G: Group
@@ -1995,11 +1994,11 @@ def Present(state):
   V = z * state.credential.X1 - r * generatorG
 
   # Generate presentation proof with integrated range proof
-  (presentationProof, D) = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
+  presentationProof = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
                                                    state.credential, V, r, z, nonce,
                                                    nonceBlinding, nonceCommit, state.presentationLimit)
 
-  presentation = (U, UPrimeCommit, m1Commit, tag, nonceCommit, D, presentationProof)
+  presentation = (U, UPrimeCommit, m1Commit, tag, nonceCommit, presentationProof)
 
   return state, nonce, presentation
 </pre><a href="#section-4.3.2-2" class="pilcrow">¶</a>
@@ -2016,19 +2015,19 @@ struct {
   uint8 m1Commit[Ne];
   uint8 tag[Ne];
   uint8 nonceCommit[Ne];
-  uint8 D[ceil(log2(presentationLimit))][Ne];
   PresentationProof presentationProof;
 } Presentation
 
 struct {
+  uint8 D[ceil(log2(presentationLimit))][Ne];
   uint8 challenge[Ns];
   // Variable length based on presentation variables plus range proof variables
   uint8 responses[5 + 3*ceil(log2(presentationLimit))][Ns];
 } PresentationProof
 </pre><a href="#section-4.3.2-5" class="pilcrow">¶</a>
 </div>
-<p id="section-4.3.2-6">The length of the Presentation structure is <code>Npresentation = 5*Ne + ceil(log2(presentationLimit))*Ne + Npresentationproof</code>.
-<code>Npresentationproof = (6 + 3*ceil(log2(presentationLimit))) * Ns</code>, which includes the challenge (Ns) and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3*ceil(log2(presentationLimit)) scalars: b[i], s[i], s2[i] for each bit). The D commitments are separate in the Presentation structure.<a href="#section-4.3.2-6" class="pilcrow">¶</a></p>
+<p id="section-4.3.2-6">The length of the Presentation structure is <code>Npresentation = 5*Ne + Npresentationproof</code>.
+<code>Npresentationproof = ceil(log2(presentationLimit))*Ne + (6 + 3*ceil(log2(presentationLimit))) * Ns</code>, which includes the D commitments (ceil(log2(presentationLimit))<em>Ne), the challenge (Ns), and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3</em>ceil(log2(presentationLimit)) scalars: b[i], s[i], s2[i] for each bit).<a href="#section-4.3.2-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="presentation-verification">
@@ -2067,8 +2066,7 @@ Inputs:
   - m1Commit: Element, a public key to the client secret (m1).
   - tag: Element, the tag element used for enforcing the presentation limit.
   - nonceCommit: Element, a Pedersen commitment to the nonce.
-  - D: [Element], array of commitments to the bit decomposition of nonceCommit
-  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).
+  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit). This proof includes D, an array of commitments to the bit decomposition of the nonce.
 - presentationLimit: Integer, the fixed presentation limit.
 
 Outputs:
@@ -2816,7 +2814,7 @@ def VerifyCredentialResponseProof(serverPublicKey, response, request):
           </h4>
 <div class="alignLeft art-text artwork" id="section-5.4.1-1">
 <pre>
-(presentationProof, D) = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT, credential, V, r, z, nonce, nonceBlinding, nonceCommit, presentationLimit)
+presentationProof = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT, credential, V, r, z, nonce, nonceBlinding, nonceCommit, presentationLimit)
 
 Inputs:
 - U: Element, re-randomized from the U in the response.
@@ -2839,9 +2837,9 @@ Inputs:
 
 Outputs:
 - presentationProof: ZKProof, a joint proof covering both presentation and range proof
+  - D: [Element], array of commitments to the bit decomposition of the nonce
   - challenge: Scalar, the challenge used in the proof of valid presentation.
   - responses: [Scalar], array of response scalars for all variables (presentation + range proof)
-- D: [Element], array of commitments to the bit decomposition of nonceCommit
 
 Parameters:
 - G: Group
@@ -3564,15 +3562,16 @@ tag = 031a774fd87a8f18f6420bea43cf5425e7426eec8ba7b8df5c13dc05f10ec6
 52d9
 D_0 = 02d50b2b283c32e006f8c16c6381811f3acd8aa8dc33e5be9e1325a89c95b3
 81ac
-proof = e37ceecc5f57a815dd6fcc8d0bc35d074d17049fb05965d2e2bd2ba2496f
-1624532b70c3108b18724116d391ff8bef2919545738d84d768e656e07aeaac49a9f
-506815376083a47e06ba0110cee2528f3bd814172c72a9237be04cddf44046d87a81
-a02604498c9bdcec69daba122af7d0373f8f1d6114dfbefafcac002f8e991b8d430f
-35fd99c6d8a666165c284049ccadc483584f4a4fbf2cc627a82783cdd1e1fb2a9c21
-ed1b05b754e0c7d36ab09fd986672b9b6a43cdc5ee30d07efe84409dd5280c655aaf
-9dbde20491a9c0324d51768b433dced9045dfa33800b216ea986743ab2e177c93418
-45a01d385bc178f748487ff280e31e01ddcd08f89446221fddca93c0745317b095f2
-021f36df4f8e5311d20a31391a51f8bd6a55980d
+proof = 02d50b2b283c32e006f8c16c6381811f3acd8aa8dc33e5be9e1325a89c95
+b381ace37ceecc5f57a815dd6fcc8d0bc35d074d17049fb05965d2e2bd2ba2496f16
+24532b70c3108b18724116d391ff8bef2919545738d84d768e656e07aeaac49a9f50
+6815376083a47e06ba0110cee2528f3bd814172c72a9237be04cddf44046d87a81a0
+2604498c9bdcec69daba122af7d0373f8f1d6114dfbefafcac002f8e991b8d430f35
+fd99c6d8a666165c284049ccadc483584f4a4fbf2cc627a82783cdd1e1fb2a9c21ed
+1b05b754e0c7d36ab09fd986672b9b6a43cdc5ee30d07efe84409dd5280c655aaf9d
+bde20491a9c0324d51768b433dced9045dfa33800b216ea986743ab2e177c9341845
+a01d385bc178f748487ff280e31e01ddcd08f89446221fddca93c0745317b095f202
+1f36df4f8e5311d20a31391a51f8bd6a55980d
 
 // Presentation2
 Blinding_0 = b68cd5b8b8d5115ad17f76297ed84c3169b1443abb42264b87e0a3a
@@ -3611,15 +3610,16 @@ tag = 03084fe6fff0ecc7c33ef5c49b492dda38083f52e9a2b70b88f3d4b4ba7b50
 afba
 D_0 = 025661d97a7c203bc3a1d29eacb338cd0c36de4b7b865428791a60f9f0df1b
 c468
-proof = da7f0320982023f95d1e8f5ae2e335ddef80eb007ecb8d7d254d09a31b78
-2ee60fa387001e9ab16ad240eb013d07c37332867843eebc57b188cca6eff3b82032
-90d181f837af1283579f9bc69cb42fe49fe952639fb6c932449309d21ae36a746859
-2bf9948bf9ee06a7901f707190efdd18e97b1a7c70a6ce8b7d8a78554dc1142f995d
-7b79790b634ac03fc5982dd4b75fe985368706152daadfb20230a4e72768c1e85988
-c64f1b082f203d40e91d1429961a668cf32cdff270c333e35c21e3fbc64c74e7857a
-1437af5a11453a3d7e60d3572d15376b4c0edb961cc5d29fd6605fae76eb857b6ec0
-bce6593a02c9826fb337f26706922de2a1e7f7f93b45b1c0afa8e09abad10a4fea1a
-48542b9ffc5df785cb993d204de0a5490ca6ff46
+proof = 025661d97a7c203bc3a1d29eacb338cd0c36de4b7b865428791a60f9f0df
+1bc468da7f0320982023f95d1e8f5ae2e335ddef80eb007ecb8d7d254d09a31b782e
+e60fa387001e9ab16ad240eb013d07c37332867843eebc57b188cca6eff3b8203290
+d181f837af1283579f9bc69cb42fe49fe952639fb6c932449309d21ae36a7468592b
+f9948bf9ee06a7901f707190efdd18e97b1a7c70a6ce8b7d8a78554dc1142f995d7b
+79790b634ac03fc5982dd4b75fe985368706152daadfb20230a4e72768c1e85988c6
+4f1b082f203d40e91d1429961a668cf32cdff270c333e35c21e3fbc64c74e7857a14
+37af5a11453a3d7e60d3572d15376b4c0edb961cc5d29fd6605fae76eb857b6ec0bc
+e6593a02c9826fb337f26706922de2a1e7f7f93b45b1c0afa8e09abad10a4fea1a48
+542b9ffc5df785cb993d204de0a5490ca6ff46
 
 </pre><a href="#section-10.1-1" class="pilcrow">¶</a>
 </div>
