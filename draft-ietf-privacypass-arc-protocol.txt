@@ -5,9 +5,9 @@
 Network Working Group                                             C. Yun
 Internet-Draft                                                C. A. Wood
 Intended status: Standards Track                             Apple, Inc.
-Expires: 6 August 2026                                  A. Faz-Hernandez
+Expires: 9 August 2026                                  A. Faz-Hernandez
                                                               Cloudflare
-                                                         2 February 2026
+                                                         5 February 2026
 
 
  Privacy Pass Issuance Protocol for Anonymous Rate-Limited Credentials
@@ -52,7 +52,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 6 August 2026.
+   This Internet-Draft will expire on 9 August 2026.
 
 Copyright Notice
 
@@ -666,11 +666,11 @@ newState, nonce, presentation = Present(state)
 
 11.1.  Normative References
 
-   [ARC]      Yun, C. and C. A. Wood, "Anonymous Rate-Limited
-              Credentials", Work in Progress, Internet-Draft, draft-yun-
-              privacypass-crypto-arc-00, 20 October 2025,
-              <https://datatracker.ietf.org/doc/html/draft-yun-
-              privacypass-crypto-arc-00>.
+   [ARC]      Yun, C., Wood, C. A., and A. F. Faz-Hernandez, "Anonymous
+              Rate-Limited Credentials Cryptography", Work in Progress,
+              Internet-Draft, draft-ietf-privacypass-arc-crypto-00, 3
+              February 2026, <https://datatracker.ietf.org/doc/html/
+              draft-ietf-privacypass-arc-crypto-00>.
 
    [ARCHITECTURE]
               Davidson, A., Iyengar, J., and C. A. Wood, "The Privacy
