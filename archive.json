@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-02-05T01:17:50.472418+00:00",
+  "timestamp": "2026-02-08T01:54:03.118909+00:00",
   "repo": "ietf-wg-privacypass/draft-arc",
   "labels": [
     {
@@ -3017,7 +3017,7 @@
       "labels": [],
       "body": "Ready for review, PTAL!\r\n\r\nTO DO - spec\r\n- [x] Define `MakeRangeProof` function from `ComputeStatementAndWitnesses`\r\n- [x] Define `VerifyRangeProof` function from `ComputeStatementAndWitnesses`\r\n- [x] Update `ComputeStatementAndWitnesses` to use the same terminology as the rest of the draft (eg nonce, nonceBlinding, nonceCommit, presentationLimit) -\r\n   - actually I just removed the `ComputeStatementAndWitnesses` function altogether, in favor of computing the statement and witnesses in `MakeRangeProof` and `VerifyRangeProof` directly.\r\n- [x] Credit Lena for Range Proof work\r\n- [x] Update `MakeRangeProof` and `VerifyRangeProof` to be \"proof helpers\", so they add variables and constraints to the statement but don't generate the proof itself. That way, the range proof can be part of the presentation proof.\r\n\r\nTO DO - proof of concept\r\n- [x] Implement the range proof in the proof of concept code\r\n- [x] Add tests for range proof\r\n- [x] Update ARC proof of concept code to be in line with these spec changes.\r\n- [x] Add negative tests for ARC (failure cases)\r\n\r\nCleanup / refactor work\r\n- [x] move the `D` vector from Presentation to PresentationProof, since it's technically a part of the proof, not the presentation itself.\r\n- [x] rebased off of `main` to pull in spec renaming changes \r\n\r\n------------------\r\nDiscussion: separate range proof for Presentation?\r\nSlack thread here: https://ietf.slack.com/archives/C09ASPV0C49/p1769196560907949?thread_ts=1769196164.769419&cid=C09ASPV0C49\r\nFor nonce hiding, we are adding a range proof to prove that the nonce is within the rate limit. I can either send this as a separate proof in addition to the presentation proof, or smash both of those into one big proof.\r\n1. In favor of combining: only one proof to verify (harder to \"forget\" to verify one), you save one scalar element (the challenge). Also this is better practice for future development - if we want to add more properties to the ZKP, we want to add those as additional constraints, not make a new ZKP for each new property.\r\n2. In favor of keeping separate: makes it easier to treat the range proof as its own \"modular\" proof, increased clarity. For instance if someone was to just implement a standalone range proof verifier, you could just send the range proof to that verifier and it would work. It feels neater?\r\n- This PR takes the first approach, since it is better practice for future anonymous credentials development.",
       "createdAt": "2026-01-26T08:14:20Z",
-      "updatedAt": "2026-02-03T23:57:16Z",
+      "updatedAt": "2026-02-05T19:32:22Z",
       "baseRepository": "ietf-wg-privacypass/draft-arc",
       "baseRefName": "main",
       "baseRefOid": "940715dfd721b070cadc7bd6bccd9fc1d0874c0e",
@@ -3029,7 +3029,136 @@
       "mergedBy": null,
       "mergeCommit": null,
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDONyB6uM7gCjTX",
+          "commit": {
+            "abbreviatedOid": "ac02dfa"
+          },
+          "author": "armfazh",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "CHANGES_REQUESTED",
+          "body": "I did a pass on the spec document, in the next review cycle I will check the code. ",
+          "createdAt": "2026-02-05T18:41:03Z",
+          "updatedAt": "2026-02-05T19:32:22Z",
+          "comments": [
+            {
+              "originalPosition": 93,
+              "body": "moving this line right before the end of all computation, so it does not get into a bad state when an error happens later.\n",
+              "createdAt": "2026-02-05T18:41:03Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 142,
+              "body": "let's define this quantity somewhere, e.g. `LOG2_LIMIT = ceil(log2(presentationLimit))`",
+              "createdAt": "2026-02-05T18:42:22Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 267,
+              "body": "```suggestion\n4. T = m1 * tag + nonce * tag, where T = G.HashToGroup(presentationContext, \"Tag\")\n```",
+              "createdAt": "2026-02-05T18:45:22Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 269,
+              "body": "```suggestion\n5. constraints added by the range proof. See {#range-proof}.\n```",
+              "createdAt": "2026-02-05T18:45:51Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 298,
+              "body": "```suggestion\n  - response: [Scalar], an array of scalars for all variables (presentation + range proof)\n```",
+              "createdAt": "2026-02-05T18:47:41Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 332,
+              "body": "```suggestion\n  # 4. T = m1 * tag + nonce * tag, where T = G.HashToGroup(presentationContext, \"Tag\")\n```",
+              "createdAt": "2026-02-05T18:49:30Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 370,
+              "body": "```suggestion\n    - response: [Scalar], an array of scalars for all variables (presentation + range proof)\n```",
+              "createdAt": "2026-02-05T18:50:20Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 438,
+              "body": "```suggestion\npower of two, that is, `presentationLimit = 2^k` for some integer `k > 0`.\n```",
+              "createdAt": "2026-02-05T18:53:13Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 453,
+              "body": "```suggestion\n1. Commit to the bits of `nonce`. That is, for each bit `b[i]` of the k-bit decomposition of `nonce`,\n```",
+              "createdAt": "2026-02-05T18:56:09Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 458,
+              "body": "```suggestion\n`D[i] = b[i] * D[i] + s2[i] * generatorH` to the equation system. A valid witness `s2[i]` can only\n```",
+              "createdAt": "2026-02-05T18:57:07Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 458,
+              "body": "we have to mention here how `s2[i]` is computed from `b[i]`",
+              "createdAt": "2026-02-05T18:58:06Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 462,
+              "body": "```suggestion\n3. In addition to verify the proof of the above relation, the verifier checks that the sum of the bit\n```",
+              "createdAt": "2026-02-05T18:58:48Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 467,
+              "body": "```suggestion\nnonceCommit = D[0] * 2^0 + D[1] * 2^1 + D[2] * 2^2 + ... + D[k-1] * 2^{k-1}\n```",
+              "createdAt": "2026-02-05T18:59:15Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 519,
+              "body": "It seems that the `presentatioLimit` is representable.\nAlso we may want to add a comment about whether we enforce cannonical representatives or being flexible to use an alternative representation.\n\n---\n\npresentationLimit = 17\ni:          1,  2,  4, 8\nremainder: 16, 14, 10, 2 \nbases =     1,  2,  4, 8, 2\nsorted = [8, 4, 2, 2, 1]\n\n| value | ComputeBases Repr| Alternative Repr|\n|--|--|--|\n| 0  | 0,0,0,0,0 | - |\n| 1  | 0,0,0,0,1 | - |\n| 2  | 0,0,1,0,0 | 0,0,0,1,0 |\n| 3  | 0,0,1,0,1 | 0,0,0,1,1 |\n| 4  | 0,1,0,0,0 | 0,0,1,1,0 |\n| 5  | 0,1,0,0,1 | 0,0,1,0,1 |\n| 6  | 0,1,1,0,0 | 0,1,0,1,0 |\n| 7  | 0,1,1,0,1 | 0,1,0,1,1 |\n| 8  | 1,0,0,0,0 | 0,1,1,1,0 |\n| 9  | 1,0,0,0,1 | 0,1,1,1,1 |\n| 10 | 1,0,1,0,0 | 1,0,0,1,0 |\n| 11 | 1,0,1,0,1 | 1,0,0,1,1 |\n| 12 | 1,1,0,0,0 | 1,0,1,1,0 |\n| 13 | 1,1,0,0,1 | 1,0,1,1,1 |\n| 14 | 1,1,1,0,0 | 1,1,0,1,0 |\n| 15 | 1,1,1,0,1 | 1,1,0,1,1 |\n| 16 | 1,1,1,1,0 | - |\n| 17 | 1,1,1,1,1 | - |\n",
+              "createdAt": "2026-02-05T19:19:39Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 592,
+              "body": "`ComputeBases` must return an arrayof integer (not scalars) to avoid double conversion.",
+              "createdAt": "2026-02-05T19:21:46Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 591,
+              "body": "```suggestion\n  # must run in constant-time (branching depends on secret value)\n  for base in bases:\n```",
+              "createdAt": "2026-02-05T19:23:32Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 671,
+              "body": "we can append a tuple of witness `(b_i,s_i,s2_i)` related to the i-th bit.\n\n```python\nfor i in range(len(b)):\n    vars_b.append(prover.AppendScalar(\"b\" + str(i), b[i]))\n    vars_s.append(prover.AppendScalar(\"s\" + str(i), s[i]))\n    vars_s2.append(prover.AppendScalar(\"s2\" + str(i), s2[i]))\n```\n",
+              "createdAt": "2026-02-05T19:26:11Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 760,
+              "body": "```suggestion\nThe presentation elements `[tag, nonceCommit, presentationContext, presentationProof, rangeProof]` are indistinguishable from all presentations made from credentials issued with the same server keys for that presentationContext. The nonce is never revealed to the server since it is hidden within a Pedersen commitment. The range proof ensures the committed nonce is within the valid range [0, presentationLimit) without revealing its value. This provides strong unlinkability properties: the server cannot link presentations based on nonce values, as the nonce commitment uses a fresh random blinding factor for each presentation.\n```",
+              "createdAt": "2026-02-05T19:29:13Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            },
+            {
+              "originalPosition": 763,
+              "body": "```suggestion\nThe indistinguishability set for these presentation elements is `sum_{i=0}^c(p_i[presentationContext])`, where `c` is the number of credentials issued with the same server keys and `p_i[presentationContext]` is the number of presentations made for each of those credentials with the same presentationContext. Unlike protocols where nonces are revealed, presentations can not be linked by comparing nonce values, resulting in maximum unlinkability within the presentation context.\n```",
+              "createdAt": "2026-02-05T19:31:16Z",
+              "updatedAt": "2026-02-05T19:32:22Z"
+            }
+          ]
+        }
+      ]
     },
     {
       "number": 54,
@@ -3078,7 +3207,7 @@
       "id": "PR_kwDONyB6uM7BQM1r",
       "title": "Update the crypto spec datatracker ID",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/pull/55",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "cathieyun",
       "authorAssociation": "COLLABORATOR",
       "assignees": [
@@ -3087,19 +3216,35 @@
       "labels": [],
       "body": "Now that we have the [draft-ietf-privacypass-arc-crypto-00](https://github.com/ietf-wg-privacypass/draft-arc/releases/tag/draft-ietf-privacypass-arc-crypto-00) tag and the corresponding Datatracker ID (https://datatracker.ietf.org/doc/draft-ietf-privacypass-arc-crypto/), we can update the `draft-ietf-privacypass-arc-protocol` spec to point to the `draft-ietf-privacypass-arc-crypto` Datatracker ID.\r\n\r\n(We couldn't do this earlier, because pointing to  `draft-ietf-privacypass-arc-crypto` before it existed as a Datatracker ID resulted in broken links and therefore broken builds for the editor's copy).",
       "createdAt": "2026-02-03T17:42:22Z",
-      "updatedAt": "2026-02-03T22:15:15Z",
+      "updatedAt": "2026-02-05T20:02:27Z",
       "baseRepository": "ietf-wg-privacypass/draft-arc",
       "baseRefName": "main",
       "baseRefOid": "940715dfd721b070cadc7bd6bccd9fc1d0874c0e",
       "headRepository": "ietf-wg-privacypass/draft-arc",
       "headRefName": "update-crypto-spec-id",
       "headRefOid": "d0cf7d5ba9bd47dafede960e35c424d4b2ab706f",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "closedAt": "2026-02-05T20:02:27Z",
+      "mergedAt": "2026-02-05T20:02:27Z",
+      "mergedBy": "cathieyun",
+      "mergeCommit": {
+        "oid": "b55ea750ebe443503f6a2916444e37940239f5af"
+      },
       "comments": [],
-      "reviews": []
+      "reviews": [
+        {
+          "id": "PRR_kwDONyB6uM7gDhmv",
+          "commit": {
+            "abbreviatedOid": "d0cf7d5"
+          },
+          "author": "armfazh",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2026-02-05T19:33:28Z",
+          "updatedAt": "2026-02-05T19:33:28Z",
+          "comments": []
+        }
+      ]
     }
   ]
 }
