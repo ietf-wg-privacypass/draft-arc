@@ -652,15 +652,18 @@ struct {
 } Presentation
 
 struct {
-  uint8 D[ceil(log2(presentationLimit))][Ne];
+  uint8 D[k][Ne];
   uint8 challenge[Ns];
   // Variable length based on presentation variables plus range proof variables
-  uint8 responses[5 + 3*ceil(log2(presentationLimit))][Ns];
+  uint8 responses[5 + 3 * k)][Ns];
 } PresentationProof
+
+k = ceil(log2(presentationLimit))
 ~~~
 
 The length of the Presentation structure is `Npresentation = 5*Ne + Npresentationproof`.
-`Npresentationproof = ceil(log2(presentationLimit))*Ne + (6 + 3*ceil(log2(presentationLimit))) * Ns`, which includes the D commitments (ceil(log2(presentationLimit))*Ne), the challenge (Ns), and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3*ceil(log2(presentationLimit)) scalars: `b[i]`, `s[i]`, `s2[i]` for each bit).
+`Npresentationproof = k * Ne + (6 + 3 * k) * Ns`, which includes the D commitments (k * Ne), the challenge (Ns), the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding), and range proof variables (3 * k scalars: `b[i]`, `s[i]`, `s2[i]` for each bit).
+`k` is the number of bits it takes to represent the presentationLimit: `k = ceil(log2(presentationLimit))`
 
 ### Presentation Verification
 
@@ -1552,6 +1555,8 @@ def ComputeBases(presentationLimit):
   # call sorted on array to ensure the additional base is in correct order
   return sorted(bases, reverse=True)
 ~~~
+
+Note that by extending the range proof for arbitrary ranges, we are changing the bases used for decomposition and therefore introducing the potential for multiple valid decompositions of a value (the nonce). Spec-compliant implementations need to follow the canonical decomposition defined in {{range-proof-creation}}.
 
 ### Range Proof Creation {#range-proof-creation}
 
