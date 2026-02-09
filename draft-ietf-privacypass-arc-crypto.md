@@ -1318,9 +1318,9 @@ Statements to prove:
 # The nonceCommit is a Pedersen commitment to nonce with blinding factor nonceBlinding
 3. nonceCommit = nonce * generatorG + nonceBlinding * generatorH
 # The tag was correctly computed using m1 and the nonce
-4. G.HashToGroup(presentationContext, "Tag") = m1 * tag + nonce * tag
+4. T = m1 * tag + nonce * tag, where T = G.HashToGroup(presentationContext, "Tag")
 # The nonce is in the range [0, presentationLimit)
-5. constraints added in the range proof helpers {#range-proof}
+5. constraints added by the range proof. See {#range-proof}.
 ~~~
 
 ### Presentation Proof Creation
@@ -1351,7 +1351,7 @@ Outputs:
 - presentationProof: ZKProof, a joint proof covering both presentation and range proof
   - D: [Element], array of commitments to the bit decomposition of the nonce
   - challenge: Scalar, the challenge used in the proof of valid presentation.
-  - responses: [Scalar], array of response scalars for all variables (presentation + range proof)
+  - response: [Scalar], an array of scalars for all variables (presentation + range proof)
 
 Parameters:
 - G: Group
@@ -1385,7 +1385,7 @@ def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT, credential
   prover.Constrain(VVar, [(zVar, X1Var), (rNegVar, genGVar)])
   # 3. nonceCommit = nonce * generatorG + nonceBlinding * generatorH
   prover.Constrain(nonceCommitVar, [(nonceVar, genGVar), (nonceBlindingVar, genHVar)])
-  # 4. G.HashToGroup(presentationContext, "Tag") = m1 * tag + nonce * tag
+  # 4. T = m1 * tag + nonce * tag, where T = G.HashToGroup(presentationContext, "Tag")
   prover.Constrain(genTVar, [(m1Var, tagVar), (nonceVar, tagVar)])
   # 5. Add range proof constraints
   (prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
@@ -1428,7 +1428,7 @@ Inputs:
   - D: [Element], array of commitments to the bit decomposition of nonceCommit
   - presentationProof: ZKProof, a joint proof covering both presentation and range proof
     - challenge: Scalar, the challenge used in the proof of valid presentation.
-    - responses: [Scalar], array of response scalars for all variables (presentation + range proof)
+    - response: [Scalar], an array of scalars for all variables (presentation + range proof)
 - presentationLimit: Integer, the fixed presentation limit.
 
 Outputs:
@@ -1494,7 +1494,7 @@ def VerifyPresentationProof(
 This section specifies a range proof to prove a secret value `nonce` lies
 in an arbitrary interval `[0, presentationLimit)`. Before specifying the proof system, we first
 give a brief overview of how it works. For simplicity, assume that `presentationLimit` is a
-power of two, that is, `presentationLimit == 2^k` for some `k`.
+power of two, that is, `presentationLimit = 2^k` for some integer `k > 0`.
 
 To prove a value lies in `[0,(2^k)-1)`, we prove it has a valid `k`-bit representation.
 This is proven by committing to the full value `nonce`, then all bits of the bit decomposition
@@ -1502,19 +1502,19 @@ This is proven by committing to the full value `nonce`, then all bits of the bit
 actually `0` or `1` and that the sum of the bits amounts to the full value `nonce`.
 This involves the following steps:
 
-1. Commit to the bits of `nonce`. That is, for each bit `b[i]` of the bit decomposition of `nonce`,
+1. Commit to the bits of `nonce`. That is, for each bit `b[i]` of the k-bit decomposition of `nonce`,
 let `D[i] = b[i] * generatorG + s[i] * generatorH`, where `s[i]` is a blinding scalar.
 2. Prove that `b[i]` is in `{0,1}` by proving the algebraic relation `b[i] *
 (b[i]-1) == 0` holds. This quadratic relation can be linearized by
 adding an auxilary witness `s2[i]` and adding the linear relation
-`D[i] == b[i] * D[i] + s2[i] * generatorH` to the equation system. A valid witness `s2[i]` can only
+`D[i] = b[i] * D[i] + s2[i] * generatorH` to the equation system. A valid witness `s2[i]` can only
 be computed by the prover if `b[i]` is in `{0,1}`. Successfully computing a witness for
 any other value requires the prover to break the discrete logarithm problem.
 3. Having verified the proof the above relation, the verifier checks that the sum of the bit
 commitments is equal to the sum of the commmitment to `nonce`:
 
 ~~~
-nonceCommit == D[0] * 2^0 + D[1] * 2^1 + D[2] * 2^2 + ... + D[k-1] * 2^{k-1}
+nonceCommit = D[0] * 2^0 + D[1] * 2^1 + D[2] * 2^2 + ... + D[k-1] * 2^{k-1}
 ~~~
 
 The third step is verified outside of the proof by adding the commitments
@@ -1589,6 +1589,7 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
   # Compute bit decomposition of nonce
   b = []
   remainder = nonce
+  # must run in constant-time (branching depends on secret value)
   for base in bases:
     if remainder >= G.ScalarToInt(base):
       remainder -= G.ScalarToInt(base)
@@ -1814,9 +1815,9 @@ Client credential presentations are constructed so that all presentations are in
 
 The indistinguishability set for these presentation elements is `sum_{i=0}^c(p_i)`, where `c` is the number of credentials issued with the same server keys, and `p_i` is the number of presentations made for each of those credentials.
 
-The presentation elements `[tag, nonceCommit, presentationContext, presentationProof, rangeProof]` are indistinguishable from all presentations made from credentials issued with the same server keys for that presentationContext. The nonce is hidden within a Pedersen commitment and never revealed to the server. The range proof ensures the committed nonce is within the valid range [0, presentationLimit) without revealing its value. This provides strong unlinkability properties: the server cannot link presentations based on nonce values, as the nonce commitment uses a fresh random blinding factor for each presentation.
+The presentation elements `[tag, nonceCommit, presentationContext, presentationProof, rangeProof]` are indistinguishable from all presentations made from credentials issued with the same server keys for that presentationContext. The nonce is never revealed to the server since it is hidden within a Pedersen commitment. The range proof ensures the committed nonce is within the valid range [0, presentationLimit) without revealing its value. This provides strong unlinkability properties: the server cannot link presentations based on nonce values, as the nonce commitment uses a fresh random blinding factor for each presentation.
 
-The indistinguishability set for these presentation elements is `sum_{i=0}^c(p_i[presentationContext])`, where `c` is the number of credentials issued with the same server keys and `p_i[presentationContext]` is the number of presentations made for each of those credentials with the same presentationContext. Unlike the previous design where nonces were revealed, presentations can no longer be linked by comparing nonce values, resulting in maximum unlinkability within the presentation context.
+The indistinguishability set for these presentation elements is `sum_{i=0}^c(p_i[presentationContext])`, where `c` is the number of credentials issued with the same server keys and `p_i[presentationContext]` is the number of presentations made for each of those credentials with the same presentationContext. Unlike protocols where nonces are revealed, presentations can not be linked by comparing nonce values, resulting in maximum unlinkability within the presentation context.
 
 ## Timing Leaks
 
