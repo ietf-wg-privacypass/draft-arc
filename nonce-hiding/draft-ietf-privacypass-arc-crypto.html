@@ -2032,7 +2032,7 @@ struct {
 </pre><a href="#section-4.3.2-5" class="pilcrow">¶</a>
 </div>
 <p id="section-4.3.2-6">The length of the Presentation structure is <code>Npresentation = 5*Ne + Npresentationproof</code>.
-<code>Npresentationproof = ceil(log2(presentationLimit))*Ne + (6 + 3*ceil(log2(presentationLimit))) * Ns</code>, which includes the D commitments (ceil(log2(presentationLimit))<em>Ne), the challenge (Ns), and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3</em>ceil(log2(presentationLimit)) scalars: b[i], s[i], s2[i] for each bit).<a href="#section-4.3.2-6" class="pilcrow">¶</a></p>
+<code>Npresentationproof = ceil(log2(presentationLimit))*Ne + (6 + 3*ceil(log2(presentationLimit))) * Ns</code>, which includes the D commitments (ceil(log2(presentationLimit))<em>Ne), the challenge (Ns), and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3</em>ceil(log2(presentationLimit)) scalars: <code>b[i]</code>, <code>s[i]</code>, <code>s2[i]</code> for each bit).<a href="#section-4.3.2-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="presentation-verification">
@@ -2166,10 +2166,10 @@ constraints to produce a zero-knowledge proof that can be verified.<a href="#sec
               <p id="section-5.1.1-5.1.1">label: Data, a value representing the context in which the proof will be used<a href="#section-5.1.1-5.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-5.1.1-5.2">
-              <p id="section-5.1.1-5.2.1">scalars: [Integer], An ordered set of representation of scalar variables to use in the proof. Each scalar has a label associated with it, stored in a list called <code>scalar_labels</code>.<a href="#section-5.1.1-5.2.1" class="pilcrow">¶</a></p>
+              <p id="section-5.1.1-5.2.1">scalars: <code>[Integer]</code>, An ordered set of representation of scalar variables to use in the proof. Each scalar has a label associated with it, stored in a list called <code>scalar_labels</code>.<a href="#section-5.1.1-5.2.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-5.1.1-5.3">
-              <p id="section-5.1.1-5.3.1">elements: [Integer], An ordered set of representation of element variables to use in the proof. Each element has a label associated with it, stored in a list called <code>element_labels</code>.<a href="#section-5.1.1-5.3.1" class="pilcrow">¶</a></p>
+              <p id="section-5.1.1-5.3.1">elements: <code>[Integer]</code>, An ordered set of representation of element variables to use in the proof. Each element has a label associated with it, stored in a list called <code>element_labels</code>.<a href="#section-5.1.1-5.3.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-5.1.1-5.4">
               <p id="section-5.1.1-5.4.1">constraints: a set of constraints, where each constraint consists of a constraint element and a linear combination of variables.<a href="#section-5.1.1-5.4.1" class="pilcrow">¶</a></p>
@@ -3015,12 +3015,14 @@ let <code>D[i] = b[i] * generatorG + s[i] * generatorH</code>, where <code>s[i]<
             <p id="section-5.5-3.2.1">Prove that <code>b[i]</code> is in <code>{0,1}</code> by proving the algebraic relation <code>b[i] *
 (b[i]-1) == 0</code> holds. This quadratic relation can be linearized by
 adding an auxilary witness <code>s2[i]</code> and adding the linear relation
-<code>D[i] = b[i] * D[i] + s2[i] * generatorH</code> to the equation system. A valid witness <code>s2[i]</code> can only
-be computed by the prover if <code>b[i]</code> is in <code>{0,1}</code>. Successfully computing a witness for
-any other value requires the prover to break the discrete logarithm problem.<a href="#section-5.5-3.2.1" class="pilcrow">¶</a></p>
+<code>D[i] = b[i] * D[i] + s2[i] * generatorH</code> to the equation system.
+A valid witness <code>s2[i]</code> can only be computed by the prover if <code>b[i]</code> is in <code>{0,1}</code>,
+and is computed as <code>s2[i] = (1 - b[i]) * s[i]</code>. Successfully computing a witness for
+any other value, while satisying the linear relation constraints, requires the prover
+to break the discrete logarithm problem.<a href="#section-5.5-3.2.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-5.5-3.3">
-            <p id="section-5.5-3.3.1">Having verified the proof the above relation, the verifier checks that the sum of the bit
+            <p id="section-5.5-3.3.1">In addition to verifying the proof of the above relation, the verifier checks that the sum of the bit
 commitments is equal to the sum of the commmitment to <code>nonce</code>:<a href="#section-5.5-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
@@ -3055,7 +3057,7 @@ def ComputeBases(presentationLimit):
   for i in range(ceil(log2(presentationLimit)) - 1):
       base = 2 ** i
       remainder -= base
-      bases.append(G.Scalar(base))
+      bases.append(base)
   bases.append(remainder - 1)
 
   # call sorted on array to ensure the additional base is in correct order
@@ -3105,8 +3107,8 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
   remainder = nonce
   # must run in constant-time (branching depends on secret value)
   for base in bases:
-    if remainder &gt;= G.ScalarToInt(base):
-      remainder -= G.ScalarToInt(base)
+    if remainder &gt;= base:
+      remainder -= base
       b.append(G.Scalar(1))
     else:
       b.append(G.Scalar(0))
@@ -3128,22 +3130,16 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
   s2.append((G.Scalar(1) - b[idx]) * s[idx])
   D.append(b[idx] * generatorG + s[idx] * generatorH)
 
-  # Append scalar variables with witness values
   vars_b = []
-  for i in range(len(b)):
-    vars_b.append(prover.AppendScalar("b" + str(i), b[i]))
-
   vars_s = []
-  for i in range(len(s)):
-    vars_s.append(prover.AppendScalar("s" + str(i), s[i]))
-
   vars_s2 = []
-  for i in range(len(s2)):
-    vars_s2.append(prover.AppendScalar("s2" + str(i), s2[i]))
-
-  # Append element variables for bit commitments D
   vars_D = []
-  for i in range(len(D)):
+  for i in range(len(b)):
+    # Append scalar variables with witness values
+    vars_b.append(prover.AppendScalar("b" + str(i), b[i]))
+    vars_s.append(prover.AppendScalar("s" + str(i), s[i]))
+    vars_s2.append(prover.AppendScalar("s2" + str(i), s2[i]))
+    # Append element variables for bit commitments D
     vars_D.append(prover.AppendElement("D" + str(i), D[i]))
 
   # Add constraints proving each b[i] is in {0,1}
@@ -3191,22 +3187,16 @@ def VerifyRangeProofHelper(verifier, D, nonceCommit, presentationLimit,
   bases = ComputeBases(presentationLimit)
   num_bits = len(bases)
 
-  # Append scalar variables without witness values
   vars_b = []
-  for i in range(num_bits):
-    vars_b.append(verifier.AppendScalar("b" + str(i)))
-
   vars_s = []
-  for i in range(num_bits):
-    vars_s.append(verifier.AppendScalar("s" + str(i)))
-
   vars_s2 = []
-  for i in range(num_bits):
-    vars_s2.append(verifier.AppendScalar("s2" + str(i)))
-
-  # Append element variables for bit commitments D
   vars_D = []
   for i in range(num_bits):
+    # Append scalar variables without witness values
+    vars_b.append(verifier.AppendScalar("b" + str(i)))
+    vars_s.append(verifier.AppendScalar("s" + str(i)))
+    vars_s2.append(verifier.AppendScalar("s2" + str(i)))
+    # Append element variables for bit commitments D
     vars_D.append(verifier.AppendElement("D" + str(i), D[i]))
 
   # Add constraints proving each b[i] is in {0,1}
