@@ -81,22 +81,16 @@ def MakeRangeProofHelper(prover, nonce, nonce_blinding, presentation_limit, gen_
     D_last = b[idx] * GenG + s_last * GenH
     D.append(D_last)
 
-    # Append scalar variables with witness values
     vars_b = []
-    for i in range(len(b)):
-        vars_b.append(prover.append_scalar("b" + str(i), b[i]))
-
     vars_s = []
-    for i in range(len(s)):
-        vars_s.append(prover.append_scalar("s" + str(i), s[i]))
-
     vars_s2 = []
-    for i in range(len(s2)):
-        vars_s2.append(prover.append_scalar("s2" + str(i), s2[i]))
-
-    # Append element variables for bit commitments D
     vars_D = []
-    for i in range(len(D)):
+    for i in range(len(b)):
+        # Append scalar variables with witness values
+        vars_b.append(prover.append_scalar("b" + str(i), b[i]))
+        vars_s.append(prover.append_scalar("s" + str(i), s[i]))
+        vars_s2.append(prover.append_scalar("s2" + str(i), s2[i]))
+        # Append element variables for bit commitments D
         vars_D.append(prover.append_element("D" + str(i), D[i]))
 
     # Add constraints proving each b[i] is in {0,1}
@@ -127,22 +121,16 @@ def VerifyRangeProofHelper(verifier, D, nonce_commit, presentation_limit, gen_G_
     bases = ComputeBases(presentation_limit)
     num_bits = len(bases)
 
-    # Append scalar variables without witness values
     vars_b = []
-    for i in range(num_bits):
-        vars_b.append(verifier.append_scalar("b" + str(i)))
-
     vars_s = []
-    for i in range(num_bits):
-        vars_s.append(verifier.append_scalar("s" + str(i)))
-
     vars_s2 = []
-    for i in range(num_bits):
-        vars_s2.append(verifier.append_scalar("s2" + str(i)))
-
-    # Append element variables for bit commitments D
     vars_D = []
     for i in range(num_bits):
+        # Append scalar variables without witness values
+        vars_b.append(verifier.append_scalar("b" + str(i)))
+        vars_s.append(verifier.append_scalar("s" + str(i)))
+        vars_s2.append(verifier.append_scalar("s2" + str(i)))
+        # Append element variables for bit commitments D
         vars_D.append(verifier.append_element("D" + str(i), D[i]))
 
     # Add constraints proving each b[i] is in {0,1}

@@ -660,7 +660,7 @@ struct {
 ~~~
 
 The length of the Presentation structure is `Npresentation = 5*Ne + Npresentationproof`.
-`Npresentationproof = ceil(log2(presentationLimit))*Ne + (6 + 3*ceil(log2(presentationLimit))) * Ns`, which includes the D commitments (ceil(log2(presentationLimit))*Ne), the challenge (Ns), and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3*ceil(log2(presentationLimit)) scalars: b[i], s[i], s2[i] for each bit).
+`Npresentationproof = ceil(log2(presentationLimit))*Ne + (6 + 3*ceil(log2(presentationLimit))) * Ns`, which includes the D commitments (ceil(log2(presentationLimit))*Ne), the challenge (Ns), and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3*ceil(log2(presentationLimit)) scalars: `b[i]`, `s[i]`, `s2[i]` for each bit).
 
 ### Presentation Verification
 
@@ -769,8 +769,8 @@ These functions are defined in the following sub-sections.
 In addition, the prover role consists of the following state:
 
 - label: Data, a value representing the context in which the proof will be used
-- scalars: [Integer], An ordered set of representation of scalar variables to use in the proof. Each scalar has a label associated with it, stored in a list called `scalar_labels`.
-- elements: [Integer], An ordered set of representation of element variables to use in the proof. Each element has a label associated with it, stored in a list called `element_labels`.
+- scalars: `[Integer]`, An ordered set of representation of scalar variables to use in the proof. Each scalar has a label associated with it, stored in a list called `scalar_labels`.
+- elements: `[Integer]`, An ordered set of representation of element variables to use in the proof. Each element has a label associated with it, stored in a list called `element_labels`.
 - constraints: a set of constraints, where each constraint consists of a constraint element and a linear combination of variables.
 
 #### AppendScalar
@@ -1507,10 +1507,12 @@ let `D[i] = b[i] * generatorG + s[i] * generatorH`, where `s[i]` is a blinding s
 2. Prove that `b[i]` is in `{0,1}` by proving the algebraic relation `b[i] *
 (b[i]-1) == 0` holds. This quadratic relation can be linearized by
 adding an auxilary witness `s2[i]` and adding the linear relation
-`D[i] = b[i] * D[i] + s2[i] * generatorH` to the equation system. A valid witness `s2[i]` can only
-be computed by the prover if `b[i]` is in `{0,1}`. Successfully computing a witness for
-any other value requires the prover to break the discrete logarithm problem.
-3. Having verified the proof the above relation, the verifier checks that the sum of the bit
+`D[i] = b[i] * D[i] + s2[i] * generatorH` to the equation system.
+A valid witness `s2[i]` can only be computed by the prover if `b[i]` is in `{0,1}`,
+and is computed as `s2[i] = (1 - b[i]) * s[i]`. Successfully computing a witness for
+any other value, while satisying the linear relation constraints, requires the prover
+to break the discrete logarithm problem.
+3. In addition to verifying the proof of the above relation, the verifier checks that the sum of the bit
 commitments is equal to the sum of the commmitment to `nonce`:
 
 ~~~
@@ -1544,7 +1546,7 @@ def ComputeBases(presentationLimit):
   for i in range(ceil(log2(presentationLimit)) - 1):
       base = 2 ** i
       remainder -= base
-      bases.append(G.Scalar(base))
+      bases.append(base)
   bases.append(remainder - 1)
 
   # call sorted on array to ensure the additional base is in correct order
@@ -1591,8 +1593,8 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
   remainder = nonce
   # must run in constant-time (branching depends on secret value)
   for base in bases:
-    if remainder >= G.ScalarToInt(base):
-      remainder -= G.ScalarToInt(base)
+    if remainder >= base:
+      remainder -= base
       b.append(G.Scalar(1))
     else:
       b.append(G.Scalar(0))
@@ -1614,22 +1616,16 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
   s2.append((G.Scalar(1) - b[idx]) * s[idx])
   D.append(b[idx] * generatorG + s[idx] * generatorH)
 
-  # Append scalar variables with witness values
   vars_b = []
-  for i in range(len(b)):
-    vars_b.append(prover.AppendScalar("b" + str(i), b[i]))
-
   vars_s = []
-  for i in range(len(s)):
-    vars_s.append(prover.AppendScalar("s" + str(i), s[i]))
-
   vars_s2 = []
-  for i in range(len(s2)):
-    vars_s2.append(prover.AppendScalar("s2" + str(i), s2[i]))
-
-  # Append element variables for bit commitments D
   vars_D = []
-  for i in range(len(D)):
+  for i in range(len(b)):
+    # Append scalar variables with witness values
+    vars_b.append(prover.AppendScalar("b" + str(i), b[i]))
+    vars_s.append(prover.AppendScalar("s" + str(i), s[i]))
+    vars_s2.append(prover.AppendScalar("s2" + str(i), s2[i]))
+    # Append element variables for bit commitments D
     vars_D.append(prover.AppendElement("D" + str(i), D[i]))
 
   # Add constraints proving each b[i] is in {0,1}
@@ -1671,22 +1667,16 @@ def VerifyRangeProofHelper(verifier, D, nonceCommit, presentationLimit,
   bases = ComputeBases(presentationLimit)
   num_bits = len(bases)
 
-  # Append scalar variables without witness values
   vars_b = []
-  for i in range(num_bits):
-    vars_b.append(verifier.AppendScalar("b" + str(i)))
-
   vars_s = []
-  for i in range(num_bits):
-    vars_s.append(verifier.AppendScalar("s" + str(i)))
-
   vars_s2 = []
-  for i in range(num_bits):
-    vars_s2.append(verifier.AppendScalar("s2" + str(i)))
-
-  # Append element variables for bit commitments D
   vars_D = []
   for i in range(num_bits):
+    # Append scalar variables without witness values
+    vars_b.append(verifier.AppendScalar("b" + str(i)))
+    vars_s.append(verifier.AppendScalar("s" + str(i)))
+    vars_s2.append(verifier.AppendScalar("s2" + str(i)))
+    # Append element variables for bit commitments D
     vars_D.append(verifier.AppendElement("D" + str(i), D[i]))
 
   # Add constraints proving each b[i] is in {0,1}
