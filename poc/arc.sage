@@ -46,11 +46,8 @@ class PresentationState(object):
         U_prime_commit = U_prime + r * GenG
         m1_commit = self.credential.m1 * U + z * GenH
 
-        # This step mutates the state by incrementing next_nonce
-        nonce = self.next_nonce
-        self.next_nonce += 1
-
         # Create Pedersen commitment to the nonce
+        nonce = self.next_nonce
         nonce_blinding = G.random_scalar(rng)
         nonce_commit = nonce * GenG + nonce_blinding * GenH
 
@@ -76,6 +73,9 @@ class PresentationState(object):
         for i, D_i in enumerate(proof.D):
             vectors["D_{}".format(i)] = to_hex(G.serialize(D_i))
         vectors["proof"] = to_hex(proof.serialize())
+
+        # This step mutates the state by incrementing next_nonce
+        self.next_nonce += 1
 
         return presentation
 

@@ -613,11 +613,8 @@ def Present(state):
   UPrimeCommit = UPrime + r * generatorG
   m1Commit = state.credential.m1 * U + z * generatorH
 
-  # This step mutates the state by incrementing the nextNonce by 1.
-  nonce = state.nextNonce
-  state.nextNonce += 1
-
   # Create Pedersen commitment to the nonce
+  nonce = state.nextNonce # nextNonce is incremented before returning
   nonceBlinding = G.RandomScalar()
   nonceCommit = G.Scalar(nonce) * generatorG + nonceBlinding * generatorH
 
@@ -631,6 +628,9 @@ def Present(state):
                                                    nonceBlinding, nonceCommit, state.presentationLimit)
 
   presentation = (U, UPrimeCommit, m1Commit, tag, nonceCommit, presentationProof)
+
+  # This step mutates the state by incrementing the nextNonce by 1.
+  state.nextNonce += 1
 
   return state, nonce, presentation
 ~~~
