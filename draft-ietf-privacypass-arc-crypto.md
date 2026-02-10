@@ -314,7 +314,7 @@ distinct steps:
    credential that can then be used in the presentation phase of the protocol. See {{issuance-step3}} for
    details about this step.
 
-Each of these steps are described in the following subsections.
+Each of these steps is described in the following subsections.
 
 ### Credential Request {#issuance-step1}
 
@@ -489,7 +489,7 @@ Outputs:
 - credential:
   - m1: Scalar, client's first secret.
   - U: Element, a randomized generator for the response. `b*G`.
-  - UPrime: Element, the MAC over the server's private keys and the client's secret secrets.
+  - UPrime: Element, the MAC over the server's private keys and the client's secrets.
   - X1: Element, server public key 1.
 
 Exceptions:
@@ -529,7 +529,7 @@ This phase consists of three steps:
 1. The server verifies the presentation with respect to the presentation context and presentation
    limit.
 
-Details for each each of these steps are in the following subsections.
+Details for each of these steps are in the following subsections.
 
 ### Presentation State
 
@@ -655,7 +655,7 @@ struct {
   uint8 D[k][Ne];
   uint8 challenge[Ns];
   // Variable length based on presentation variables plus range proof variables
-  uint8 responses[5 + 3 * k)][Ns];
+  uint8 responses[5 + 3 * k][Ns];
 } PresentationProof
 
 k = ceil(log2(presentationLimit))
@@ -815,14 +815,14 @@ def AppendElement(label, assignment):
 #### Constrain
 
 ~~~
-Constrain(result, linearCombination)
+Constrain(constraintElement, linearCombination)
 
 Inputs:
-- result: Integer, representation of constraint element
-- assignment: linear combination of scalar and element variable (representations)
+- constraintElement: Integer, representation of constraint element
+- linearCombination: linear combination of scalar and element variable (representations)
 
-def Constrain(label, linearCombination):
-  state.constraints.append((result, linearCombination))
+def Constrain(constraintElement, linearCombination):
+  state.constraints.append((constraintElement, linearCombination))
 ~~~
 
 #### Prove
@@ -857,14 +857,14 @@ def Prove():
       if element_var.index > len(state.elements):
         raise InvalidVariableAllocationError
 
-    scalar_index = linear_combination[0][0]
-    element_index = linear_combination[0][1]
+    scalar_index = linear_combination[0][0].index
+    element_index = linear_combination[0][1].index
     blinded_element = blindings[scalar_index] * state.elements[element_index]
 
     for i, pair in enumerate(linear_combination):
       if i > 0:
-        scalar_index = pair[0]
-        element_index = pair[1]
+        scalar_index = pair[0].index
+        element_index = pair[1].index
         blinded_element += blindings[scalar_index] * state.elements[element_index]
 
         blinded_elements.append(blinded_element)
@@ -966,19 +966,19 @@ def Verify(proof):
 
   blinded_elements = []
   for (constraint_element, linear_combination) in state.constraints:
-    if constraint_element > len(state.elements):
+    if constraint_element.index > len(state.elements):
       raise InvalidVariableAllocationError
     for (_, element_var) in linear_combination:
-      if element_var > len(state.elements):
+      if element_var.index > len(state.elements):
         raise InvalidVariableAllocationError
 
-    challenge_element = proof.challenge * state.elements[constraint_element]
+    challenge_element = proof.challenge * state.elements[constraint_element.index]
     for i, pair in enumerate(linear_combination):
-      challenge_element += proof.responses[pair[0]] * state.elements[pair[1]]
+      challenge_element += proof.responses[pair[0].index] * state.elements[pair[1].index]
 
     blinded_elements.append(challenge_element)
 
-  challenge = ComposeChallenge(state.label, self.elements, blinded_elements)
+  challenge = ComposeChallenge(state.label, state.elements, blinded_elements)
   return challenge == proof.challenge
 ~~~
 
@@ -1513,10 +1513,10 @@ adding an auxilary witness `s2[i]` and adding the linear relation
 `D[i] = b[i] * D[i] + s2[i] * generatorH` to the equation system.
 A valid witness `s2[i]` can only be computed by the prover if `b[i]` is in `{0,1}`,
 and is computed as `s2[i] = (1 - b[i]) * s[i]`. Successfully computing a witness for
-any other value, while satisying the linear relation constraints, requires the prover
+any other value, while satisfying the linear relation constraints, requires the prover
 to break the discrete logarithm problem.
 3. In addition to verifying the proof of the above relation, the verifier checks that the sum of the bit
-commitments is equal to the sum of the commmitment to `nonce`:
+commitments is equal to the sum of the commitment to `nonce`:
 
 ~~~
 nonceCommit = D[0] * 2^0 + D[1] * 2^1 + D[2] * 2^2 + ... + D[k-1] * 2^{k-1}
@@ -1543,8 +1543,8 @@ Outputs:
 
 def ComputeBases(presentationLimit):
   # compute bases to express the commitment as a linear combination of the bit decomposition
-  remainder=presentationLimit
-  bases=[]
+  remainder = presentationLimit
+  bases = []
   # Generate all but the last power-of-two base.
   for i in range(ceil(log2(presentationLimit)) - 1):
       base = 2 ** i
@@ -1802,7 +1802,7 @@ The server commitment to `x0` is defined as `X0 = x0 * G.generatorG() + x0Blindi
 
 However, an adversary breaking the discrete log (e.g., a quantum adversary) can find pairs `(x0, x0Blinding)` and `(x0', x0Blinding')` both committing to `X0` and use them to issue different credentials. This capability would let the adversary partitioning the client anonymity set by linking clients to the underlying secret used for credential issuance, i.e., `x0` or `x0'`. This requires an active attack and therefore is not an immediate concern.
 
-Statistical anonymity is possible by committing to `x0` and x0Blinding` separately, as in {{REVISITING_KVAC}}. However, the security of this construction requires additional analysis.
+Statistical anonymity is possible by committing to `x0` and `x0Blinding` separately, as in {{REVISITING_KVAC}}. However, the security of this construction requires additional analysis.
 
 ## Presentation Unlinkability {#pres-unlinkability}
 
