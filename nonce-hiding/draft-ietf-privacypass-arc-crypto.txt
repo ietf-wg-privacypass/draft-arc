@@ -5,9 +5,9 @@
 Network Working Group                                             C. Yun
 Internet-Draft                                                C. A. Wood
 Intended status: Informational                               Apple, Inc.
-Expires: 13 August 2026                                 A. Faz-Hernandez
+Expires: 14 August 2026                                 A. Faz-Hernandez
                                                               Cloudflare
-                                                         9 February 2026
+                                                        10 February 2026
 
 
             Anonymous Rate-Limited Credentials Cryptography
@@ -57,7 +57,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 13 August 2026.
+   This Internet-Draft will expire on 14 August 2026.
 
 Copyright Notice
 
@@ -403,7 +403,7 @@ def SetupServer():
        be used in the presentation phase of the protocol.  See
        Section 4.2.3 for details about this step.
 
-   Each of these steps are described in the following subsections.
+   Each of these steps is described in the following subsections.
 
 4.2.1.  Credential Request
 
@@ -575,7 +575,7 @@ Outputs:
 - credential:
   - m1: Scalar, client's first secret.
   - U: Element, a randomized generator for the response. `b*G`.
-  - UPrime: Element, the MAC over the server's private keys and the client's secret secrets.
+  - UPrime: Element, the MAC over the server's private keys and the client's secrets.
   - X1: Element, server public key 1.
 
 Exceptions:
@@ -622,8 +622,7 @@ def FinalizeCredential(clientSecrets, serverPublicKey, request, response):
    3.  The server verifies the presentation with respect to the
        presentation context and presentation limit.
 
-   Details for each each of these steps are in the following
-   subsections.
+   Details for each of these steps are in the following subsections.
 
 4.3.1.  Presentation State
 
@@ -745,21 +744,21 @@ struct {
 } Presentation
 
 struct {
-  uint8 D[ceil(log2(presentationLimit))][Ne];
+  uint8 D[k][Ne];
   uint8 challenge[Ns];
   // Variable length based on presentation variables plus range proof variables
-  uint8 responses[5 + 3*ceil(log2(presentationLimit))][Ns];
+  uint8 responses[5 + 3 * k][Ns];
 } PresentationProof
 
+k = ceil(log2(presentationLimit))
+
    The length of the Presentation structure is Npresentation = 5*Ne +
-   Npresentationproof.  Npresentationproof =
-   ceil(log2(presentationLimit))*Ne + (6 +
-   3*ceil(log2(presentationLimit))) * Ns, which includes the D
-   commitments (ceil(log2(presentationLimit))_Ne), the challenge (Ns),
-   and the response scalars for presentation variables (5 scalars: m1,
-   z, -r, nonce, nonceBlinding) and range proof variables
-   (3_ceil(log2(presentationLimit)) scalars: b[i], s[i], s2[i] for each
-   bit).
+   Npresentationproof.  Npresentationproof = k * Ne + (6 + 3 * k) * Ns,
+   which includes the D commitments (k * Ne), the challenge (Ns), the
+   response scalars for presentation variables (5 scalars: m1, z, -r,
+   nonce, nonceBlinding), and range proof variables (3 * k scalars:
+   b[i], s[i], s2[i] for each bit). k is the number of bits it takes to
+   represent the presentationLimit: k = ceil(log2(presentationLimit))
 
 4.3.3.  Presentation Verification
 
@@ -930,14 +929,14 @@ def VerifyPresentation(
 
 5.1.1.3.  Constrain
 
-Constrain(result, linearCombination)
+Constrain(constraintElement, linearCombination)
 
 Inputs:
-- result: Integer, representation of constraint element
-- assignment: linear combination of scalar and element variable (representations)
+- constraintElement: Integer, representation of constraint element
+- linearCombination: linear combination of scalar and element variable (representations)
 
-def Constrain(label, linearCombination):
-  state.constraints.append((result, linearCombination))
+def Constrain(constraintElement, linearCombination):
+  state.constraints.append((constraintElement, linearCombination))
 
 5.1.1.4.  Prove
 
@@ -970,14 +969,14 @@ def Prove():
       if element_var.index > len(state.elements):
         raise InvalidVariableAllocationError
 
-    scalar_index = linear_combination[0][0]
-    element_index = linear_combination[0][1]
+    scalar_index = linear_combination[0][0].index
+    element_index = linear_combination[0][1].index
     blinded_element = blindings[scalar_index] * state.elements[element_index]
 
     for i, pair in enumerate(linear_combination):
       if i > 0:
-        scalar_index = pair[0]
-        element_index = pair[1]
+        scalar_index = pair[0].index
+        element_index = pair[1].index
         blinded_element += blindings[scalar_index] * state.elements[element_index]
 
         blinded_elements.append(blinded_element)
@@ -1084,19 +1083,19 @@ def Verify(proof):
 
   blinded_elements = []
   for (constraint_element, linear_combination) in state.constraints:
-    if constraint_element > len(state.elements):
+    if constraint_element.index > len(state.elements):
       raise InvalidVariableAllocationError
     for (_, element_var) in linear_combination:
-      if element_var > len(state.elements):
+      if element_var.index > len(state.elements):
         raise InvalidVariableAllocationError
 
-    challenge_element = proof.challenge * state.elements[constraint_element]
+    challenge_element = proof.challenge * state.elements[constraint_element.index]
     for i, pair in enumerate(linear_combination):
-      challenge_element += proof.responses[pair[0]] * state.elements[pair[1]]
+      challenge_element += proof.responses[pair[0].index] * state.elements[pair[1].index]
 
     blinded_elements.append(challenge_element)
 
-  challenge = ComposeChallenge(state.label, self.elements, blinded_elements)
+  challenge = ComposeChallenge(state.label, state.elements, blinded_elements)
   return challenge == proof.challenge
 
 5.2.  CredentialRequest Proof
@@ -1622,12 +1621,12 @@ def VerifyPresentationProof(
        equation system.  A valid witness s2[i] can only be computed by
        the prover if b[i] is in {0,1}, and is computed as s2[i] = (1 -
        b[i]) * s[i].  Successfully computing a witness for any other
-       value, while satisying the linear relation constraints, requires
+       value, while satisfying the linear relation constraints, requires
        the prover to break the discrete logarithm problem.
 
    3.  In addition to verifying the proof of the above relation, the
        verifier checks that the sum of the bit commitments is equal to
-       the sum of the commmitment to nonce:
+       the sum of the commitment to nonce:
 
 nonceCommit = D[0] * 2^0 + D[1] * 2^1 + D[2] * 2^2 + ... + D[k-1] * 2^{k-1}
 
@@ -1652,8 +1651,8 @@ Outputs:
 
 def ComputeBases(presentationLimit):
   # compute bases to express the commitment as a linear combination of the bit decomposition
-  remainder=presentationLimit
-  bases=[]
+  remainder = presentationLimit
+  bases = []
   # Generate all but the last power-of-two base.
   for i in range(ceil(log2(presentationLimit)) - 1):
       base = 2 ** i
@@ -1663,6 +1662,12 @@ def ComputeBases(presentationLimit):
 
   # call sorted on array to ensure the additional base is in correct order
   return sorted(bases, reverse=True)
+
+   Note that by extending the range proof for arbitrary ranges, we are
+   changing the bases used for decomposition and therefore introducing
+   the potential for multiple valid decompositions of a value (the
+   nonce).  Spec-compliant implementations need to follow the canonical
+   decomposition defined in Section 5.5.1.
 
 5.5.1.  Range Proof Creation
 
@@ -1954,7 +1959,7 @@ def VerifyRangeProofHelper(verifier, D, nonceCommit, presentationLimit,
    credential issuance, i.e., x0 or x0'.  This requires an active attack
    and therefore is not an immediate concern.
 
-   Statistical anonymity is possible by committing to x0 and x0Blinding`
+   Statistical anonymity is possible by committing to x0 and x0Blinding
    separately, as in [REVISITING_KVAC].  However, the security of this
    construction requires additional analysis.
 

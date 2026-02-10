@@ -1056,7 +1056,7 @@ svg :is([fill="white"], [fill^="#fff"]) {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Yun, et al.</td>
-<td class="center">Expires 13 August 2026</td>
+<td class="center">Expires 14 August 2026</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1069,12 +1069,12 @@ svg :is([fill="white"], [fill^="#fff"]) {
 <dd class="internet-draft">draft-ietf-privacypass-arc-crypto-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-02-09" class="published">9 February 2026</time>
+<time datetime="2026-02-10" class="published">10 February 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Informational</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2026-08-13">13 August 2026</time></dd>
+<dd class="expires"><time datetime="2026-08-14">14 August 2026</time></dd>
 <dt class="label-authors">Authors:</dt>
 <dd class="authors">
 <div class="author">
@@ -1139,7 +1139,7 @@ rate-limit access from anonymous clients.<a href="#section-abstract-1" class="pi
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 13 August 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 14 August 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1659,7 +1659,7 @@ credential that can then be used in the presentation phase of the protocol. See 
 details about this step.<a href="#section-4.2-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
-<p id="section-4.2-4">Each of these steps are described in the following subsections.<a href="#section-4.2-4" class="pilcrow">¶</a></p>
+<p id="section-4.2-4">Each of these steps is described in the following subsections.<a href="#section-4.2-4" class="pilcrow">¶</a></p>
 <div id="issuance-step1">
 <section id="section-4.2.1">
           <h4 id="name-credential-request">
@@ -1843,7 +1843,7 @@ Outputs:
 - credential:
   - m1: Scalar, client's first secret.
   - U: Element, a randomized generator for the response. `b*G`.
-  - UPrime: Element, the MAC over the server's private keys and the client's secret secrets.
+  - UPrime: Element, the MAC over the server's private keys and the client's secrets.
   - X1: Element, server public key 1.
 
 Exceptions:
@@ -1895,7 +1895,7 @@ is hidden in a Pedersen commitment, ensuring servers cannot link presentations u
 limit.<a href="#section-4.3-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
-<p id="section-4.3-4">Details for each each of these steps are in the following subsections.<a href="#section-4.3-4" class="pilcrow">¶</a></p>
+<p id="section-4.3-4">Details for each of these steps are in the following subsections.<a href="#section-4.3-4" class="pilcrow">¶</a></p>
 <div id="presentation-state">
 <section id="section-4.3.1">
           <h4 id="name-presentation-state">
@@ -2024,15 +2024,18 @@ struct {
 } Presentation
 
 struct {
-  uint8 D[ceil(log2(presentationLimit))][Ne];
+  uint8 D[k][Ne];
   uint8 challenge[Ns];
   // Variable length based on presentation variables plus range proof variables
-  uint8 responses[5 + 3*ceil(log2(presentationLimit))][Ns];
+  uint8 responses[5 + 3 * k][Ns];
 } PresentationProof
+
+k = ceil(log2(presentationLimit))
 </pre><a href="#section-4.3.2-5" class="pilcrow">¶</a>
 </div>
 <p id="section-4.3.2-6">The length of the Presentation structure is <code>Npresentation = 5*Ne + Npresentationproof</code>.
-<code>Npresentationproof = ceil(log2(presentationLimit))*Ne + (6 + 3*ceil(log2(presentationLimit))) * Ns</code>, which includes the D commitments (ceil(log2(presentationLimit))<em>Ne), the challenge (Ns), and the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding) and range proof variables (3</em>ceil(log2(presentationLimit)) scalars: <code>b[i]</code>, <code>s[i]</code>, <code>s2[i]</code> for each bit).<a href="#section-4.3.2-6" class="pilcrow">¶</a></p>
+<code>Npresentationproof = k * Ne + (6 + 3 * k) * Ns</code>, which includes the D commitments (k * Ne), the challenge (Ns), the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding), and range proof variables (3 * k scalars: <code>b[i]</code>, <code>s[i]</code>, <code>s2[i]</code> for each bit).
+<code>k</code> is the number of bits it takes to represent the presentationLimit: <code>k = ceil(log2(presentationLimit))</code><a href="#section-4.3.2-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="presentation-verification">
@@ -2230,14 +2233,14 @@ def AppendElement(label, assignment):
             </h5>
 <div class="alignLeft art-text artwork" id="section-5.1.1.3-1">
 <pre>
-Constrain(result, linearCombination)
+Constrain(constraintElement, linearCombination)
 
 Inputs:
-- result: Integer, representation of constraint element
-- assignment: linear combination of scalar and element variable (representations)
+- constraintElement: Integer, representation of constraint element
+- linearCombination: linear combination of scalar and element variable (representations)
 
-def Constrain(label, linearCombination):
-  state.constraints.append((result, linearCombination))
+def Constrain(constraintElement, linearCombination):
+  state.constraints.append((constraintElement, linearCombination))
 </pre><a href="#section-5.1.1.3-1" class="pilcrow">¶</a>
 </div>
 </section>
@@ -2277,14 +2280,14 @@ def Prove():
       if element_var.index &gt; len(state.elements):
         raise InvalidVariableAllocationError
 
-    scalar_index = linear_combination[0][0]
-    element_index = linear_combination[0][1]
+    scalar_index = linear_combination[0][0].index
+    element_index = linear_combination[0][1].index
     blinded_element = blindings[scalar_index] * state.elements[element_index]
 
     for i, pair in enumerate(linear_combination):
       if i &gt; 0:
-        scalar_index = pair[0]
-        element_index = pair[1]
+        scalar_index = pair[0].index
+        element_index = pair[1].index
         blinded_element += blindings[scalar_index] * state.elements[element_index]
 
         blinded_elements.append(blinded_element)
@@ -2410,19 +2413,19 @@ def Verify(proof):
 
   blinded_elements = []
   for (constraint_element, linear_combination) in state.constraints:
-    if constraint_element &gt; len(state.elements):
+    if constraint_element.index &gt; len(state.elements):
       raise InvalidVariableAllocationError
     for (_, element_var) in linear_combination:
-      if element_var &gt; len(state.elements):
+      if element_var.index &gt; len(state.elements):
         raise InvalidVariableAllocationError
 
-    challenge_element = proof.challenge * state.elements[constraint_element]
+    challenge_element = proof.challenge * state.elements[constraint_element.index]
     for i, pair in enumerate(linear_combination):
-      challenge_element += proof.responses[pair[0]] * state.elements[pair[1]]
+      challenge_element += proof.responses[pair[0].index] * state.elements[pair[1].index]
 
     blinded_elements.append(challenge_element)
 
-  challenge = ComposeChallenge(state.label, self.elements, blinded_elements)
+  challenge = ComposeChallenge(state.label, state.elements, blinded_elements)
   return challenge == proof.challenge
 </pre><a href="#section-5.1.2.2-1" class="pilcrow">¶</a>
 </div>
@@ -3018,12 +3021,12 @@ adding an auxilary witness <code>s2[i]</code> and adding the linear relation
 <code>D[i] = b[i] * D[i] + s2[i] * generatorH</code> to the equation system.
 A valid witness <code>s2[i]</code> can only be computed by the prover if <code>b[i]</code> is in <code>{0,1}</code>,
 and is computed as <code>s2[i] = (1 - b[i]) * s[i]</code>. Successfully computing a witness for
-any other value, while satisying the linear relation constraints, requires the prover
+any other value, while satisfying the linear relation constraints, requires the prover
 to break the discrete logarithm problem.<a href="#section-5.5-3.2.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-5.5-3.3">
             <p id="section-5.5-3.3.1">In addition to verifying the proof of the above relation, the verifier checks that the sum of the bit
-commitments is equal to the sum of the commmitment to <code>nonce</code>:<a href="#section-5.5-3.3.1" class="pilcrow">¶</a></p>
+commitments is equal to the sum of the commitment to <code>nonce</code>:<a href="#section-5.5-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
 <div class="alignLeft art-text artwork" id="section-5.5-4">
@@ -3051,8 +3054,8 @@ Outputs:
 
 def ComputeBases(presentationLimit):
   # compute bases to express the commitment as a linear combination of the bit decomposition
-  remainder=presentationLimit
-  bases=[]
+  remainder = presentationLimit
+  bases = []
   # Generate all but the last power-of-two base.
   for i in range(ceil(log2(presentationLimit)) - 1):
       base = 2 ** i
@@ -3064,6 +3067,7 @@ def ComputeBases(presentationLimit):
   return sorted(bases, reverse=True)
 </pre><a href="#section-5.5-7" class="pilcrow">¶</a>
 </div>
+<p id="section-5.5-8">Note that by extending the range proof for arbitrary ranges, we are changing the bases used for decomposition and therefore introducing the potential for multiple valid decompositions of a value (the nonce). Spec-compliant implementations need to follow the canonical decomposition defined in <a href="#range-proof-creation" class="auto internal xref">Section 5.5.1</a>.<a href="#section-5.5-8" class="pilcrow">¶</a></p>
 <div id="range-proof-creation">
 <section id="section-5.5.1">
           <h4 id="name-range-proof-creation">
@@ -3375,7 +3379,7 @@ necessary for these properties to hold.<a href="#section-7-2" class="pilcrow">¶
         </h3>
 <p id="section-7.2-1">The server commitment to <code>x0</code> is defined as <code>X0 = x0 * G.generatorG() + x0Blinding * G.GeneratorH()</code>, following the definitions in <span>[<a href="#KVAC" class="cite xref">KVAC</a>]</span>. This is computationally binding to the secret key <code>x0</code>. This means that unless the discrete log is broken, the credentials issued under one server commitment <code>X0, X1, ...</code> will all be issued under the same private keys <code>x0, x1, ...</code><a href="#section-7.2-1" class="pilcrow">¶</a></p>
 <p id="section-7.2-2">However, an adversary breaking the discrete log (e.g., a quantum adversary) can find pairs <code>(x0, x0Blinding)</code> and <code>(x0', x0Blinding')</code> both committing to <code>X0</code> and use them to issue different credentials. This capability would let the adversary partitioning the client anonymity set by linking clients to the underlying secret used for credential issuance, i.e., <code>x0</code> or <code>x0'</code>. This requires an active attack and therefore is not an immediate concern.<a href="#section-7.2-2" class="pilcrow">¶</a></p>
-<p id="section-7.2-3">Statistical anonymity is possible by committing to <code>x0</code> and x0Blinding` separately, as in <span>[<a href="#REVISITING_KVAC" class="cite xref">REVISITING_KVAC</a>]</span>. However, the security of this construction requires additional analysis.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
+<p id="section-7.2-3">Statistical anonymity is possible by committing to <code>x0</code> and <code>x0Blinding</code> separately, as in <span>[<a href="#REVISITING_KVAC" class="cite xref">REVISITING_KVAC</a>]</span>. However, the security of this construction requires additional analysis.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="pres-unlinkability">

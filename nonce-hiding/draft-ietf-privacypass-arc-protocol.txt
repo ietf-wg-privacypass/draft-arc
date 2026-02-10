@@ -5,9 +5,9 @@
 Network Working Group                                             C. Yun
 Internet-Draft                                                C. A. Wood
 Intended status: Standards Track                             Apple, Inc.
-Expires: 13 August 2026                                 A. Faz-Hernandez
+Expires: 14 August 2026                                 A. Faz-Hernandez
                                                               Cloudflare
-                                                         9 February 2026
+                                                        10 February 2026
 
 
  Privacy Pass Issuance Protocol for Anonymous Rate-Limited Credentials
@@ -52,7 +52,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 13 August 2026.
+   This Internet-Draft will expire on 14 August 2026.
 
 Copyright Notice
 
