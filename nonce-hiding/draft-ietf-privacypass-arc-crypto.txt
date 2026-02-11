@@ -5,9 +5,9 @@
 Network Working Group                                             C. Yun
 Internet-Draft                                                C. A. Wood
 Intended status: Informational                               Apple, Inc.
-Expires: 14 August 2026                                 A. Faz-Hernandez
+Expires: 15 August 2026                                 A. Faz-Hernandez
                                                               Cloudflare
-                                                        10 February 2026
+                                                        11 February 2026
 
 
             Anonymous Rate-Limited Credentials Cryptography
@@ -57,7 +57,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 14 August 2026.
+   This Internet-Draft will expire on 15 August 2026.
 
 Copyright Notice
 
@@ -1589,11 +1589,10 @@ def VerifyPresentationProof(
   # 5. Add range proof constraints and verify the sum of the nonceCommit bit commitments
   (verifier, sumValid) = VerifyRangeProofHelper(verifier, presentation.D, presentation.nonceCommit,
                                                 presentationLimit, genGVar, genHVar)
-  if not sumValid:
-    return False
 
   # Verify the joint proof
-  return verifier.Verify(presentation.presentationProof)
+  proofValid = sumValid and verifier.Verify(presentation.presentationProof)
+  return proofValid
 
 5.5.  Range Proof for Arbitrary Values
 
@@ -1653,8 +1652,9 @@ def ComputeBases(presentationLimit):
   # compute bases to express the commitment as a linear combination of the bit decomposition
   remainder = presentationLimit
   bases = []
+  k = ceil(log2(presentationLimit))
   # Generate all but the last power-of-two base.
-  for i in range(ceil(log2(presentationLimit)) - 1):
+  for i in range(k - 1):
       base = 2 ** i
       remainder -= base
       bases.append(base)
@@ -1666,8 +1666,8 @@ def ComputeBases(presentationLimit):
    Note that by extending the range proof for arbitrary ranges, we are
    changing the bases used for decomposition and therefore introducing
    the potential for multiple valid decompositions of a value (the
-   nonce).  Spec-compliant implementations need to follow the canonical
-   decomposition defined in Section 5.5.1.
+   nonce).  Implementations compliant with this specification MUST
+   follow the canonical decomposition defined in Section 5.5.1.
 
 5.5.1.  Range Proof Creation
 
