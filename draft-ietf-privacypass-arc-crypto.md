@@ -1485,11 +1485,10 @@ def VerifyPresentationProof(
   # 5. Add range proof constraints and verify the sum of the nonceCommit bit commitments
   (verifier, sumValid) = VerifyRangeProofHelper(verifier, presentation.D, presentation.nonceCommit,
                                                 presentationLimit, genGVar, genHVar)
-  if not sumValid:
-    return False
 
   # Verify the joint proof
-  return verifier.Verify(presentation.presentationProof)
+  proofValid = sumValid and verifier.Verify(presentation.presentationProof)
+  return proofValid
 ~~~
 
 ## Range Proof for Arbitrary Values {#range-proof}
@@ -1545,8 +1544,9 @@ def ComputeBases(presentationLimit):
   # compute bases to express the commitment as a linear combination of the bit decomposition
   remainder = presentationLimit
   bases = []
+  k = ceil(log2(presentationLimit))
   # Generate all but the last power-of-two base.
-  for i in range(ceil(log2(presentationLimit)) - 1):
+  for i in range(k - 1):
       base = 2 ** i
       remainder -= base
       bases.append(base)
@@ -1556,7 +1556,7 @@ def ComputeBases(presentationLimit):
   return sorted(bases, reverse=True)
 ~~~
 
-Note that by extending the range proof for arbitrary ranges, we are changing the bases used for decomposition and therefore introducing the potential for multiple valid decompositions of a value (the nonce). Spec-compliant implementations need to follow the canonical decomposition defined in {{range-proof-creation}}.
+Note that by extending the range proof for arbitrary ranges, we are changing the bases used for decomposition and therefore introducing the potential for multiple valid decompositions of a value (the nonce). Implementations compliant with this specification MUST follow the canonical decomposition defined in {{range-proof-creation}}.
 
 ### Range Proof Creation {#range-proof-creation}
 

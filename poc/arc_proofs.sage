@@ -254,9 +254,9 @@ class PresentationProof(object):
 
         # 5. Add range proof constraints and verify the sum of the nonceCommit bit commitments
         (verifier, sum_valid) = VerifyRangeProofHelper(verifier, presentation.proof.D, presentation.nonce_commit, presentation_limit, gen_G_var, gen_H_var)
-        if not sum_valid:
-            return False
 
         # Verify the joint proof - create a Proof object from the PresentationProof
         proof_to_verify = Proof(presentation.proof.challenge, presentation.proof.responses)
-        return verifier.verify(proof_to_verify)
+
+        proof_valid = sum_valid and verifier.verify(proof_to_verify)
+        return proof_valid
