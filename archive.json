@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-02-12T01:23:38.803256+00:00",
+  "timestamp": "2026-02-17T01:21:26.140158+00:00",
   "repo": "ietf-wg-privacypass/draft-arc",
   "labels": [
     {
@@ -687,6 +687,102 @@
           "updatedAt": "2026-01-12T20:41:25Z"
         }
       ]
+    },
+    {
+      "number": 56,
+      "id": "I_kwDONyB6uM7rLlG-",
+      "title": "Simplification of challenge composition",
+      "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/56",
+      "state": "OPEN",
+      "author": "martinthomson",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "Given that `Ne` is a constant, why are you encoding it for each element in [ComposeChallenge](https://ietf-wg-privacypass.github.io/draft-arc/draft-ietf-privacypass-arc-crypto.html#section-5.1.1.4-4)?  It seems like the I2OSP calls there can be dropped.",
+      "createdAt": "2026-02-16T03:25:46Z",
+      "updatedAt": "2026-02-16T03:25:46Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 57,
+      "id": "I_kwDONyB6uM7rLmWI",
+      "title": "Formatting",
+      "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/57",
+      "state": "OPEN",
+      "author": "martinthomson",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "The number of code blocks in this document is high, which is understandable.  However, these blocks also include a bunch of extra text: preconditions, inputs, outputs, and so forth.  These end up being badly formatted, as code blocks don't get the benefit of wrapping and whatnot.  For instance, very few of the diagrams fit the 72 column width.\n\nConsider reformatting code blocks.",
+      "createdAt": "2026-02-16T03:27:50Z",
+      "updatedAt": "2026-02-16T03:27:50Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 58,
+      "id": "I_kwDONyB6uM7rLnY3",
+      "title": "Constrain: label or result?",
+      "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/58",
+      "state": "OPEN",
+      "author": "martinthomson",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "https://datatracker.ietf.org/doc/html/draft-ietf-privacypass-arc-crypto-00#section-5.1.1.3 says:\n\n```python\ndef Constrain(label, linearCombination):\n  state.constraints.append((result, linearCombination))\n```\n\nThe rest of the definition uses \"result\", so I think that \"label\" is in error.",
+      "createdAt": "2026-02-16T03:29:38Z",
+      "updatedAt": "2026-02-16T03:29:38Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 59,
+      "id": "I_kwDONyB6uM7rLoSm",
+      "title": "ComputeStatementAndWitnesses missing r argument",
+      "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/59",
+      "state": "OPEN",
+      "author": "martinthomson",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "Probably an error, because it is described, but the code is unclear.\n\nThe code also calls `allocate_scalars` and `allocateScalars` on consecutive lines.",
+      "createdAt": "2026-02-16T03:31:24Z",
+      "updatedAt": "2026-02-16T03:31:24Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 60,
+      "id": "I_kwDONyB6uM7rLo-A",
+      "title": "Better range proof",
+      "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/60",
+      "state": "OPEN",
+      "author": "martinthomson",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "The range proof does the typical 0..2^n proof that involves decomposition and proof of bit-ness.  This could be improved using the same techniques recently added in the VDAF spec.",
+      "createdAt": "2026-02-16T03:32:44Z",
+      "updatedAt": "2026-02-16T03:32:44Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 61,
+      "id": "I_kwDONyB6uM7rbSEu",
+      "title": "What is LinearRelation?",
+      "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/61",
+      "state": "OPEN",
+      "author": "martinthomson",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "There is a `LinearRelation` type used in the range proof that doesn't have a definition.  The associated methods look like they might relate to the functions that `Prover` provides, but they take a different form.",
+      "createdAt": "2026-02-16T22:22:04Z",
+      "updatedAt": "2026-02-16T22:22:04Z",
+      "closedAt": null,
+      "comments": []
     }
   ],
   "pulls": [
