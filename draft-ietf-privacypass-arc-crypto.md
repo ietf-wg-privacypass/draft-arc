@@ -590,7 +590,7 @@ Outputs:
   - m1Commit: Element, a public key to the client secret (m1).
   - tag: Element, the tag element used for enforcing the presentation limit.
   - nonceCommit: Element, a Pedersen commitment to the nonce.
-  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit). This proof includes D, an array of commitments to the bit decomposition of the nonce.
+  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).
 
 Parameters:
 - G: Group
@@ -652,18 +652,16 @@ struct {
 } Presentation
 
 struct {
-  uint8 D[k][Ne];
+  uint8 D[k][Ne]; // k = ceil(log2(presentationLimit))
   uint8 challenge[Ns];
   // Variable length based on presentation variables plus range proof variables
   uint8 responses[5 + 3 * k][Ns];
 } PresentationProof
-
-k = ceil(log2(presentationLimit))
 ~~~
 
 The length of the Presentation structure is `Npresentation = 5*Ne + Npresentationproof`.
 `Npresentationproof = k * Ne + (6 + 3 * k) * Ns`, which includes the D commitments (k * Ne), the challenge (Ns), the response scalars for presentation variables (5 scalars: m1, z, -r, nonce, nonceBlinding), and range proof variables (3 * k scalars: `b[i]`, `s[i]`, `s2[i]` for each bit).
-`k` is the number of bits it takes to represent the presentationLimit: `k = ceil(log2(presentationLimit))`
+`k` is the number of bits it takes to represent the presentationLimit, i.e., `k = ceil(log2(presentationLimit))`
 
 ### Presentation Verification
 
@@ -698,7 +696,7 @@ Inputs:
   - m1Commit: Element, a public key to the client secret (m1).
   - tag: Element, the tag element used for enforcing the presentation limit.
   - nonceCommit: Element, a Pedersen commitment to the nonce.
-  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit). This proof includes D, an array of commitments to the bit decomposition of the nonce.
+  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).
 - presentationLimit: Integer, the fixed presentation limit.
 
 Outputs:
@@ -1550,7 +1548,7 @@ def ComputeBases(presentationLimit):
       base = 2 ** i
       remainder -= base
       bases.append(base)
-  bases.append(remainder - 1)
+  bases.append(remainder - 1) # add non-binary base to close the gap
 
   # call sorted on array to ensure the additional base is in correct order
   return sorted(bases, reverse=True)
