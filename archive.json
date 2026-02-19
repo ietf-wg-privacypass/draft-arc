@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-02-17T01:21:26.140158+00:00",
+  "timestamp": "2026-02-19T01:22:57.854438+00:00",
   "repo": "ietf-wg-privacypass/draft-arc",
   "labels": [
     {
@@ -3113,7 +3113,7 @@
       "labels": [],
       "body": "Ready for review, PTAL!\r\n\r\nTO DO - spec\r\n- [x] Define `MakeRangeProof` function from `ComputeStatementAndWitnesses`\r\n- [x] Define `VerifyRangeProof` function from `ComputeStatementAndWitnesses`\r\n- [x] Update `ComputeStatementAndWitnesses` to use the same terminology as the rest of the draft (eg nonce, nonceBlinding, nonceCommit, presentationLimit) -\r\n   - actually I just removed the `ComputeStatementAndWitnesses` function altogether, in favor of computing the statement and witnesses in `MakeRangeProof` and `VerifyRangeProof` directly.\r\n- [x] Credit Lena for Range Proof work\r\n- [x] Update `MakeRangeProof` and `VerifyRangeProof` to be \"proof helpers\", so they add variables and constraints to the statement but don't generate the proof itself. That way, the range proof can be part of the presentation proof.\r\n\r\nTO DO - proof of concept\r\n- [x] Implement the range proof in the proof of concept code\r\n- [x] Add tests for range proof\r\n- [x] Update ARC proof of concept code to be in line with these spec changes.\r\n- [x] Add negative tests for ARC (failure cases)\r\n\r\nCleanup / refactor work\r\n- [x] move the `D` vector from Presentation to PresentationProof, since it's technically a part of the proof, not the presentation itself.\r\n- [x] rebased off of `main` to pull in spec renaming changes \r\n\r\n------------------\r\nDiscussion: separate range proof for Presentation?\r\nSlack thread here: https://ietf.slack.com/archives/C09ASPV0C49/p1769196560907949?thread_ts=1769196164.769419&cid=C09ASPV0C49\r\nFor nonce hiding, we are adding a range proof to prove that the nonce is within the rate limit. I can either send this as a separate proof in addition to the presentation proof, or smash both of those into one big proof.\r\n1. In favor of combining: only one proof to verify (harder to \"forget\" to verify one), you save one scalar element (the challenge). Also this is better practice for future development - if we want to add more properties to the ZKP, we want to add those as additional constraints, not make a new ZKP for each new property.\r\n2. In favor of keeping separate: makes it easier to treat the range proof as its own \"modular\" proof, increased clarity. For instance if someone was to just implement a standalone range proof verifier, you could just send the range proof to that verifier and it would work. It feels neater?\r\n- This PR takes the first approach, since it is better practice for future anonymous credentials development.",
       "createdAt": "2026-01-26T08:14:20Z",
-      "updatedAt": "2026-02-11T07:28:59Z",
+      "updatedAt": "2026-02-18T17:43:50Z",
       "baseRepository": "ietf-wg-privacypass/draft-arc",
       "baseRefName": "main",
       "baseRefOid": "940715dfd721b070cadc7bd6bccd9fc1d0874c0e",
@@ -3451,6 +3451,104 @@
               "body": "That's not strictly necessary, because `sumValid` is a computation over public data: the bit decomposition commitments, and the total value commitment. So exiting early if `sumValid` is false doesn't reveal any secret data.\r\n\r\nBut to follow good practice, I will combine the two checks into one.",
               "createdAt": "2026-02-11T07:24:53Z",
               "updatedAt": "2026-02-11T07:24:54Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDONyB6uM7jdpnO",
+          "commit": {
+            "abbreviatedOid": "8fb8899"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "Do we have a sense for the cost of this new proof? ",
+          "createdAt": "2026-02-17T20:43:47Z",
+          "updatedAt": "2026-02-18T17:43:50Z",
+          "comments": [
+            {
+              "originalPosition": 92,
+              "body": "```suggestion\n  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).\n```",
+              "createdAt": "2026-02-17T20:43:47Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 92,
+              "body": "I don't think this is important to the reader at this point.",
+              "createdAt": "2026-02-17T20:44:01Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 137,
+              "body": "Are any steps above fallible? If so, should we increment `nonce` before the fallible steps occur, so that nonces aren't reused?",
+              "createdAt": "2026-02-17T20:45:05Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 171,
+              "body": "```suggestion\nstruct {\n  uint8 D[k][Ne]; // k = ceil(log2(presentationLimit))\n  uint8 challenge[Ns];\n  // Variable length based on presentation variables plus range proof variables\n  uint8 responses[5 + 3 * k][Ns];\n} PresentationProof\n```",
+              "createdAt": "2026-02-17T20:46:46Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 177,
+              "body": "```suggestion\n`k` is the number of bits it takes to represent the presentationLimit, i.e., `k = ceil(log2(presentationLimit))`\n```",
+              "createdAt": "2026-02-17T20:47:00Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 209,
+              "body": "```suggestion\n  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).\n```",
+              "createdAt": "2026-02-17T20:47:20Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 370,
+              "body": "Does this citation render correctly?",
+              "createdAt": "2026-02-17T20:49:13Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 463,
+              "body": "Can we make this name more informative? Maybe `bitCommits` or something?",
+              "createdAt": "2026-02-17T20:50:16Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 522,
+              "body": "Does this need to be in constant time?",
+              "createdAt": "2026-02-17T20:50:44Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 549,
+              "body": "This feels a little confusing to me. Is this checking that the literal sum of 1s and 0s is equal to `nonce`, or is it checking that the composition of those bits sums to `nonce`? For instance, if `nonce = 13`, we'd commit to bits 0, 2, and 3 (`1101b`), and we'd want to prove that the coefficients of these commitments are actually 1 or 0, and that, if we were to sum `1*2^0 + 1*2^2 + 1*2^3` we'd get 13. It sounds like this is saying \"sum 1, 1, 0, 1\", which would yield 4. ",
+              "createdAt": "2026-02-17T20:56:17Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 571,
+              "body": "(to answer my own question above -- yes, this is what it means!)",
+              "createdAt": "2026-02-17T20:57:15Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 698,
+              "body": "If this is the case, can we specify it in constant-time?",
+              "createdAt": "2026-02-17T20:59:57Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 622,
+              "body": "```suggestion\n  bases.append(remainder - 1) # add non-binary base to close the gap\n```",
+              "createdAt": "2026-02-17T21:01:24Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
+            },
+            {
+              "originalPosition": 625,
+              "body": "Can you explain why this step is needed? I assume it _would_ be in the correct order based on how `bases` is computed.",
+              "createdAt": "2026-02-17T21:02:00Z",
+              "updatedAt": "2026-02-18T17:43:50Z"
             }
           ]
         }
