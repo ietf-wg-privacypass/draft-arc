@@ -1597,11 +1597,9 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
   remainder = nonce
   # must run in constant-time (branching depends on secret value)
   for base in bases:
-    if remainder >= base:
-      remainder -= base
-      b.append(G.Scalar(1))
-    else:
-      b.append(G.Scalar(0))
+    bitValue = 1 if (remainder >= base) else 0
+    remainder -= bitValue * base
+    b.append(G.Scalar(bitValue))
 
   # Compute commitments to bits
   D = []

@@ -50,11 +50,9 @@ def MakeRangeProofHelper(prover, nonce, nonce_blinding, presentation_limit, gen_
     b = []
     remainder = nonce
     for base in bases:
-        if remainder >= base:
-            remainder -= base
-            b.append(Integer(1))
-        else:
-            b.append(Integer(0))
+        bit_value = 1 if (remainder >= base) else 0
+        remainder -= bit_value * base
+        b.append(Integer(bit_value))
 
     # Compute commitments to bits
     D = []
