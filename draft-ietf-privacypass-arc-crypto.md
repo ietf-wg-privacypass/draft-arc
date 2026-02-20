@@ -604,6 +604,10 @@ def Present(state):
   if state.nextNonce >= state.presentationLimit:
     raise LimitExceededError
 
+  nonce = state.nextNonce
+  # This step mutates the state by incrementing nextNonce by 1.
+  state.nextNonce += 1
+
   a = G.RandomScalar()
   r = G.RandomScalar()
   z = G.RandomScalar()
@@ -614,7 +618,6 @@ def Present(state):
   m1Commit = state.credential.m1 * U + z * generatorH
 
   # Create Pedersen commitment to the nonce
-  nonce = state.nextNonce # nextNonce is incremented before returning
   nonceBlinding = G.RandomScalar()
   nonceCommit = G.Scalar(nonce) * generatorG + nonceBlinding * generatorH
 
@@ -628,9 +631,6 @@ def Present(state):
                                                    nonceBlinding, nonceCommit, state.presentationLimit)
 
   presentation = (U, UPrimeCommit, m1Commit, tag, nonceCommit, presentationProof)
-
-  # This step mutates the state by incrementing the nextNonce by 1.
-  state.nextNonce += 1
 
   return state, nonce, presentation
 ~~~
@@ -1499,7 +1499,8 @@ power of two, that is, `presentationLimit = 2^k` for some integer `k > 0`.
 To prove a value lies in `[0,(2^k)-1)`, we prove it has a valid `k`-bit representation.
 This is proven by committing to the full value `nonce`, then all bits of the bit decomposition
 `b` of the value `nonce`, and then proving each coefficient of the bit decomposition is
-actually `0` or `1` and that the sum of the bits amounts to the full value `nonce`.
+actually `0` or `1` and that the sum of the bits multiplied by their associated bases equals
+the full value `nonce`.
 This involves the following steps:
 
 1. Commit to the bits of `nonce`. That is, for each bit `b[i]` of the k-bit decomposition of `nonce`,

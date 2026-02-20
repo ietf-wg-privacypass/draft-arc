@@ -37,6 +37,10 @@ class PresentationState(object):
         if self.next_nonce >= self.presentation_limit:
             raise Exception("LimitExceededError")
 
+        nonce = self.next_nonce
+        # This step mutates the state by incrementing next_nonce
+        self.next_nonce += 1
+
         a = G.random_scalar(rng)
         r = G.random_scalar(rng)
         z = G.random_scalar(rng)
@@ -47,7 +51,6 @@ class PresentationState(object):
         m1_commit = self.credential.m1 * U + z * GenH
 
         # Create Pedersen commitment to the nonce
-        nonce = self.next_nonce
         nonce_blinding = G.random_scalar(rng)
         nonce_commit = nonce * GenG + nonce_blinding * GenH
 
@@ -73,9 +76,6 @@ class PresentationState(object):
         for i, D_i in enumerate(proof.D):
             vectors["D_{}".format(i)] = to_hex(G.serialize(D_i))
         vectors["proof"] = to_hex(proof.serialize())
-
-        # This step mutates the state by incrementing next_nonce
-        self.next_nonce += 1
 
         return presentation
 
