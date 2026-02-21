@@ -56,10 +56,12 @@ def main(path="vectors"):
     presentation_state = PresentationState(credential, sample_presentation_context, presentation_limit)
 
     presentation_1 = presentation_state.present(rng, presentation_vectors_1)
-    assert issuer.verify_presentation(private_key, public_key, sample_request_context, sample_presentation_context, presentation_1, presentation_limit)
+    validity_1, tag_1 = issuer.verify_presentation(private_key, public_key, sample_request_context, sample_presentation_context, presentation_1, presentation_limit)
+    assert validity_1
 
     presentation_2 = presentation_state.present(rng, presentation_vectors_2)
-    assert issuer.verify_presentation(private_key, public_key, sample_request_context, sample_presentation_context, presentation_2, presentation_limit)
+    validity_2, tag_2 = issuer.verify_presentation(private_key, public_key, sample_request_context, sample_presentation_context, presentation_2, presentation_limit)
+    assert validity_2
 
     vectors = {}
     vectors[context_string] = {
