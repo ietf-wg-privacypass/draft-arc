@@ -751,7 +751,7 @@ look up the tags corresponding to the associated requestContext and presentation
 
 # Zero-Knowledge Proofs
 
-This section uses the Interactive Sigma Protocol {{!SIGMA=I-D.draft-irtf-cfrg-sigma-protocols-00}} to create zero-knowledge proofs of knowledge for various ARC operations, and the Fiat-Shamir Transform {{!FIAT-SHAMIR=I-D.draft-irtf-cfrg-fiat-shamir-00}} to make those proofs non-interactive.
+This section uses the Interactive Sigma Protocol {{!SIGMA=I-D.draft-irtf-cfrg-sigma-protocols-01}} to create zero-knowledge proofs of knowledge for various ARC operations, and the Fiat-Shamir Transform {{!FIAT-SHAMIR=I-D.draft-irtf-cfrg-fiat-shamir-01}} to make those proofs non-interactive.
 
 ## CredentialRequest Proof {#request-proof}
 
