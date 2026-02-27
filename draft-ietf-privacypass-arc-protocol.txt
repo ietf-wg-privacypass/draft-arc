@@ -5,9 +5,9 @@
 Network Working Group                                             C. Yun
 Internet-Draft                                                C. A. Wood
 Intended status: Standards Track                             Apple, Inc.
-Expires: 25 August 2026                                 A. Faz-Hernandez
+Expires: 31 August 2026                                 A. Faz-Hernandez
                                                               Cloudflare
-                                                        21 February 2026
+                                                        27 February 2026
 
 
  Privacy Pass Issuance Protocol for Anonymous Rate-Limited Credentials
@@ -52,7 +52,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 25 August 2026.
+   This Internet-Draft will expire on 31 August 2026.
 
 Copyright Notice
 
@@ -460,16 +460,17 @@ Table of Contents
    challenge, denoted credential, Clients compute a credential
    presentation value as follows:
 
-presentation_context = concat(
-  encode(2, len(challenge.issuer_name)),
-  challenge.issuer_name,
-  encode(2, len(challenge.origin_info)),
-  challenge.origin_info,
-  encode(2, len(challenge.redemption_context)),
-  challenge.redemption_context,
-  issuer_key_id)
-state = MakePresentationState(credential, presentation_context, presentation_limit)
-newState, nonce, presentation = Present(state)
+   presentation_context = concat(
+     encode(2, len(challenge.issuer_name)),
+     challenge.issuer_name,
+     encode(2, len(challenge.origin_info)),
+     challenge.origin_info,
+     encode(2, len(challenge.redemption_context)),
+     challenge.redemption_context,
+     issuer_key_id)
+   state = MakePresentationState(credential, presentation_context,
+     presentation_limit)
+   newState, nonce, presentation = Present(state)
 
    Subsequent presentations MUST use the updated state, denoted
    newState.  Reusing the original state will break the presentation
@@ -532,14 +533,8 @@ newState, nonce, presentation = Present(state)
      tokenChallenge.redemption_context,
      issuer_key_id)
 
-   valid = VerifyPresentation(
-     skI,
-     pkI,
-     request_context,
-     presentation_context,
-     nonce,
-     presentation,
-     presentation_limit)
+   valid, tag = VerifyPresentation(skI, pkI, request_context,
+     presentation_context, presentation, presentation_limit)
 
    This function returns True if the CredentialToken is valid, and False
    otherwise.
