@@ -1,4 +1,4 @@
-from sagelib.arc_groups import G, GenG, GenH
+load('arc_groups.sage')
 from math import ceil, log2
 
 def ComputeBases(presentation_limit):
@@ -27,21 +27,23 @@ def ComputeBases(presentation_limit):
     # Sort in descending order
     return sorted(bases, reverse=True)
 
-def MakeRangeProofHelper(prover, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var):
+def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, rng):
     """
-    Add range proof constraints to prover statement.
+    Add range proof constraints to statement.
 
     Inputs:
-    - prover: Prover statement to which constraints will be added
+    - statement: LinearRelation statement to which constraints will be added
     - nonce: Integer, the nonce value to prove is in range
     - nonce_blinding: Scalar, the blinding factor for the nonce commitment
     - presentation_limit: Integer, the maximum value of the range (exclusive)
     - gen_G_var: Integer, variable index for generator G
     - gen_H_var: Integer, variable index for generator H
+    - rng: Random number generator for creating blinding factors
 
     Outputs:
-    - prover: Modified prover statement with range proof constraints added
+    - statement: Modified statement with range proof constraints added
     - D: [Element], array of commitments to the bit decomposition
+    - range_witness: [Scalar], witness values for range proof (b[0], s[0], s2[0], b[1], s[1], s2[1], ...)
     """
     # Compute bit decomposition and commitments
     bases = ComputeBases(presentation_limit)
@@ -61,7 +63,7 @@ def MakeRangeProofHelper(prover, nonce, nonce_blinding, presentation_limit, gen_
     partial_sum = Integer(0)
 
     for i in range(len(bases) - 1):
-        s_i = G.random_scalar(prover.rng)
+        s_i = G.random_scalar(rng)
         s.append(s_i)
         partial_sum += bases[i] * s_i
         s2_i = (Integer(1) - b[i]) * s_i
@@ -79,33 +81,40 @@ def MakeRangeProofHelper(prover, nonce, nonce_blinding, presentation_limit, gen_
     D_last = b[idx] * GenG + s_last * GenH
     D.append(D_last)
 
-    vars_b = []
-    vars_s = []
-    vars_s2 = []
-    vars_D = []
-    for i in range(len(b)):
-        # Append scalar variables with witness values
-        vars_b.append(prover.append_scalar("b" + str(i), b[i]))
-        vars_s.append(prover.append_scalar("s" + str(i), s[i]))
-        vars_s2.append(prover.append_scalar("s2" + str(i), s2[i]))
-        # Append element variables for bit commitments D
-        vars_D.append(prover.append_element("D" + str(i), D[i]))
+    # Allocate scalar variables (3 per bit: b, s, s2)
+    num_bits = len(b)
+    num_scalars = 3 * num_bits
+    scalar_vars = statement.allocate_scalars(num_scalars)
+
+    # Unpack into separate arrays
+    vars_b = scalar_vars[0::3]      # Every 3rd element starting at 0
+    vars_s = scalar_vars[1::3]      # Every 3rd element starting at 1
+    vars_s2 = scalar_vars[2::3]     # Every 3rd element starting at 2
+
+    # Allocate and set element variables for bit commitments D
+    vars_D = statement.allocate_elements(num_bits)
+    statement.set_elements([(vars_D[i], D[i]) for i in range(num_bits)])
 
     # Add constraints proving each b[i] is in {0,1}
-    for i in range(len(b)):
+    for i in range(num_bits):
         # D[i] = b[i] * generatorG + s[i] * generatorH
-        prover.constrain(vars_D[i], [(vars_b[i], gen_G_var), (vars_s[i], gen_H_var)])
+        statement.append_equation(vars_D[i], [(vars_b[i], gen_G_var), (vars_s[i], gen_H_var)])
         # D[i] = b[i] * D[i] + s2[i] * generatorH (proves b[i] is in {0,1})
-        prover.constrain(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], gen_H_var)])
+        statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], gen_H_var)])
 
-    return (prover, D)
+    # Build witness array: interleave b, s, s2 values
+    range_witness = []
+    for i in range(num_bits):
+        range_witness.extend([b[i], s[i], s2[i]])
 
-def VerifyRangeProofHelper(verifier, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var):
+    return (statement, D, range_witness)
+
+def VerifyRangeProofHelper(statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var):
     """
-    Add range proof constraints to verifier statement and verify sum.
+    Add range proof constraints to statement and verify sum.
 
     Inputs:
-    - verifier: Verifier statement to which constraints will be added
+    - statement: LinearRelation statement to which constraints will be added
     - D: [Element], array of commitments to the bit decomposition
     - nonce_commit: Element, the Pedersen commitment to the nonce
     - presentation_limit: Integer, the maximum value of the range (exclusive)
@@ -113,30 +122,31 @@ def VerifyRangeProofHelper(verifier, D, nonce_commit, presentation_limit, gen_G_
     - gen_H_var: Integer, variable index for generator H
 
     Outputs:
-    - verifier: Modified verifier statement with range proof constraints added
+    - statement: Modified statement with range proof constraints added
     - validity: Boolean, True if sum(bases[i] * D[i]) == nonce_commit, False otherwise
     """
     bases = ComputeBases(presentation_limit)
     num_bits = len(bases)
 
-    vars_b = []
-    vars_s = []
-    vars_s2 = []
-    vars_D = []
-    for i in range(num_bits):
-        # Append scalar variables without witness values
-        vars_b.append(verifier.append_scalar("b" + str(i)))
-        vars_s.append(verifier.append_scalar("s" + str(i)))
-        vars_s2.append(verifier.append_scalar("s2" + str(i)))
-        # Append element variables for bit commitments D
-        vars_D.append(verifier.append_element("D" + str(i), D[i]))
+    # Allocate scalar variables (3 per bit: b, s, s2)
+    num_scalars = 3 * num_bits
+    scalar_vars = statement.allocate_scalars(num_scalars)
+
+    # Unpack into separate arrays
+    vars_b = scalar_vars[0::3]      # Every 3rd element starting at 0
+    vars_s = scalar_vars[1::3]      # Every 3rd element starting at 1
+    vars_s2 = scalar_vars[2::3]     # Every 3rd element starting at 2
+
+    # Allocate and set element variables for bit commitments D
+    vars_D = statement.allocate_elements(num_bits)
+    statement.set_elements([(vars_D[i], D[i]) for i in range(num_bits)])
 
     # Add constraints proving each b[i] is in {0,1}
     for i in range(num_bits):
         # D[i] = b[i] * generatorG + s[i] * generatorH
-        verifier.constrain(vars_D[i], [(vars_b[i], gen_G_var), (vars_s[i], gen_H_var)])
+        statement.append_equation(vars_D[i], [(vars_b[i], gen_G_var), (vars_s[i], gen_H_var)])
         # D[i] = b[i] * D[i] + s2[i] * generatorH
-        verifier.constrain(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], gen_H_var)])
+        statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], gen_H_var)])
 
     # Verify the sum check: nonce_commit == sum(bases[i] * D[i])
     # This is done explicitly by computing the sum homomorphically
@@ -145,4 +155,4 @@ def VerifyRangeProofHelper(verifier, D, nonce_commit, presentation_limit, gen_G_
         sum_D = sum_D + Integer(bases[i]) * D[i]
 
     sum_valid = (sum_D == nonce_commit)
-    return (verifier, sum_valid)
+    return (statement, sum_valid)
