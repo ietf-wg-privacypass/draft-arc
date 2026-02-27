@@ -5,9 +5,9 @@
 Network Working Group                                             C. Yun
 Internet-Draft                                                C. A. Wood
 Intended status: Informational                               Apple, Inc.
-Expires: 27 August 2026                                 A. Faz-Hernandez
+Expires: 31 August 2026                                 A. Faz-Hernandez
                                                               Cloudflare
-                                                        23 February 2026
+                                                        27 February 2026
 
 
             Anonymous Rate-Limited Credentials Cryptography
@@ -57,7 +57,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 27 August 2026.
+   This Internet-Draft will expire on 31 August 2026.
 
 Copyright Notice
 
@@ -2002,9 +2002,9 @@ def VerifyRangeProofHelper(statement, D, nonceCommit, presentationLimit,
 
    [FIAT-SHAMIR]
               Orrù, M., "Fiat-Shamir Transformation", Work in Progress,
-              Internet-Draft, draft-irtf-cfrg-fiat-shamir-00, 8 August
+              Internet-Draft, draft-irtf-cfrg-fiat-shamir-01, 20 October
               2025, <https://datatracker.ietf.org/doc/html/draft-irtf-
-              cfrg-fiat-shamir-00>.
+              cfrg-fiat-shamir-01>.
 
    [I-D.irtf-cfrg-hash-to-curve]
               Faz-Hernandez, A. F., Scott, S., Sullivan, N., Wahby, R.
@@ -2028,8 +2028,9 @@ def VerifyRangeProofHelper(statement, D, nonceCommit, presentationLimit,
 
    [SIGMA]    Orrù, M. and C. Yun, "Interactive Sigma Proofs", Work in
               Progress, Internet-Draft, draft-irtf-cfrg-sigma-protocols-
-              00, 8 August 2025, <https://datatracker.ietf.org/doc/html/
-              draft-irtf-cfrg-sigma-protocols-00>.
+              01, 20 October 2025,
+              <https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-
+              sigma-protocols-01>.
 
 12.2.  Informative References
 
