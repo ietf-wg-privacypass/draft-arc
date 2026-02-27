@@ -322,10 +322,12 @@ Each of these steps is described in the following subsections.
 Given a request context, the process for creating a credential request is as follows:
 
 ~~~
-(clientSecrets, request) = CreateCredentialRequest(requestContext)
+(clientSecrets, request) = CreateCredentialRequest(requestContext, rng)
 
 Inputs:
 - requestContext: Data, context for the credential request
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
 - request:
@@ -344,7 +346,7 @@ Parameters:
 - generatorG: Element, equivalent to G.GeneratorG()
 - generatorH: Element, equivalent to G.GeneratorH()
 
-def CreateCredentialRequest(requestContext):
+def CreateCredentialRequest(requestContext, rng):
   m1 = G.RandomScalar()
   m2 = G.HashToScalar(requestContext, "requestContext")
   r1 = G.RandomScalar()
@@ -352,7 +354,7 @@ def CreateCredentialRequest(requestContext):
   m1Enc = m1 * generatorG + r1 * generatorH
   m2Enc = m2 * generatorG + r2 * generatorH
   requestProof = MakeCredentialRequestProof(m1, m2, r1, r2,
-    m1Enc, m2Enc)
+    m1Enc, m2Enc, rng)
   request = (m1Enc, m2Enc, requestProof)
   clientSecrets = (m1, m2, r1, r2)
   return (clientSecrets, request)
@@ -379,7 +381,7 @@ for creating a credential response is as follows.
 
 ~~~ pseudocode
 response = CreateCredentialResponse(serverPrivateKey,
-  serverPublicKey, request)
+  serverPublicKey, request, rng)
 
 Inputs:
 - serverPrivateKey:
@@ -396,6 +398,8 @@ Inputs:
   - m2Enc: Element, second encrypted secret.
   - requestProof: String (ZKProof), a proof of correct generation
     of m1Enc and m2Enc.
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
 - U: Element, a randomized generator for the response, `b*G`.
@@ -415,7 +419,7 @@ Parameters:
 Exceptions:
 - VerifyError, raised when response verification fails
 
-def CreateCredentialResponse(serverPrivateKey, serverPublicKey, request):
+def CreateCredentialResponse(serverPrivateKey, serverPublicKey, request, rng):
   if VerifyCredentialRequestProof(request) == false:
     raise VerifyError
 
@@ -431,7 +435,7 @@ def CreateCredentialResponse(serverPrivateKey, serverPublicKey, request):
 
   responseProof = MakeCredentialResponseProof(serverPrivateKey,
     serverPublicKey, request, b, U, encUPrime,
-    X0Aux, X1Aux, X2Aux, HAux)
+    X0Aux, X1Aux, X2Aux, HAux, rng)
   return (U, encUPrime, X0Aux, X1Aux, X2Aux, HAux, responseProof)
 ~~~
 
@@ -582,7 +586,7 @@ a presentation accepts as input a presentation state and then outputs an updated
 state.
 
 ~~~
-newState, nonce, presentation = Present(state)
+newState, nonce, presentation = Present(state, rng)
 
 Inputs:
 state: input PresentationState
@@ -592,6 +596,8 @@ state: input PresentationState
   - nextNonce: Integer, the next nonce that can be used. This
     increments by 1 for each use.
   - presentationLimit: Integer, the fixed presentation limit.
+rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
 - newState: updated PresentationState
@@ -616,7 +622,7 @@ Exceptions:
 - LimitExceededError, raised when the presentation count meets or
   exceeds the presentation limit for the given presentation context
 
-def Present(state):
+def Present(state, rng):
   if state.nextNonce >= state.presentationLimit:
     raise LimitExceededError
 
@@ -644,7 +650,7 @@ def Present(state):
   # Generate presentation proof with integrated range proof
   presentationProof = MakePresentationProof(U, UPrimeCommit,
     m1Commit, tag, generatorT, state.credential, V, r, z, nonce,
-    nonceBlinding, nonceCommit, state.presentationLimit)
+    nonceBlinding, nonceCommit, state.presentationLimit, rng)
 
   presentation = (U, UPrimeCommit, m1Commit, tag, nonceCommit,
     presentationProof)
@@ -766,7 +772,7 @@ The request proof is a proof of knowledge of (m1, m2, r1, r2) used to generate t
 
 ~~~
 requestProof = MakeCredentialRequestProof(m1, m2, r1, r2, m1Enc,
-  m2Enc)
+  m2Enc, rng)
 
 Inputs:
 - m1: Scalar, first secret.
@@ -775,6 +781,8 @@ Inputs:
 - r2: Scalar, blinding factor for second secret.
 - m1Enc: Element, first encrypted secret.
 - m2Enc: Element, second encrypted secret.
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
 - proof: String (ZKProof)
@@ -785,7 +793,7 @@ Parameters:
 - generatorH: Element, equivalent to G.GeneratorH()
 - contextString: public input
 
-def MakeCredentialRequestProof(m1, m2, r1, r2, m1Enc, m2Enc):
+def MakeCredentialRequestProof(m1, m2, r1, r2, m1Enc, m2Enc, rng):
   statement = LinearRelation(G)
   [m1Var, m2Var, r1Var, r2Var] = statement.allocate_scalars(4)
   witness = [m1, m2, r1, r2]
@@ -888,7 +896,7 @@ The response proof is a proof of knowledge of (x0, x1, x2, x0Blinding, b) used i
 ~~~
 responseProof = MakeCredentialResponseProof(serverPrivateKey,
   serverPublicKey, request, b, U, encUPrime,
-  X0Aux, X1Aux, X2Aux, HAux)
+  X0Aux, X1Aux, X2Aux, HAux, rng)
 
 Inputs:
 - serverPrivateKey:
@@ -910,6 +918,8 @@ Inputs:
 - X1Aux: Element, auxiliary point for X1.
 - X2Aux: Element, auxiliary point for X2.
 - HAux: Element, auxiliary point for generatorH.
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
 - proof: String (ZKProof)
@@ -921,7 +931,7 @@ Parameters:
 - contextString: public input
 
 def MakeCredentialResponseProof(serverPrivateKey, serverPublicKey,
-  request, b, U, encUPrime, X0Aux, X1Aux, X2Aux, HAux):
+  request, b, U, encUPrime, X0Aux, X1Aux, X2Aux, HAux, rng):
   statement = LinearRelation(G)
   [x0Var, x1Var, x2Var, x0BlindingVar, bVar, t1Var, t2Var]
     = statement.allocate_scalars(7)
@@ -1105,7 +1115,7 @@ Statements to prove:
 ~~~
 presentationProof = MakePresentationProof(U, UPrimeCommit,
   m1Commit, tag, generatorT, credential, V, r, z, nonce,
-  nonceBlinding, nonceCommit, presentationLimit)
+  nonceBlinding, nonceCommit, presentationLimit, rng)
 
 Inputs:
 - U: Element, re-randomized from the U in the response.
@@ -1129,6 +1139,8 @@ Inputs:
 - nonceBlinding: Scalar (private), the blinding factor for the nonce commitment.
 - nonceCommit: Element, the Pedersen commitment to the nonce.
 - presentationLimit: Integer, the fixed presentation limit.
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
 - presentationProof: ZKProof, a joint proof covering both
@@ -1148,7 +1160,7 @@ Parameters:
 
 def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
   credential, V, r, z, nonce, nonceBlinding, nonceCommit,
-  presentationLimit):
+  presentationLimit, rng):
   statement = LinearRelation(G)
   [m1Var, zVar, rNegVar, nonceVar, nonceBlindingVar] = statement.allocate_scalars(5)
 
