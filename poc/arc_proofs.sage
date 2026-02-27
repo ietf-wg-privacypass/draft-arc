@@ -10,19 +10,10 @@ if sigma_poc_path not in sys.path:
 load('arc_groups.sage')
 # Load range_proof to get the range proof helpers
 load('range_proof.sage')
-# Load ciphersuite to get NISchnorrProofShake128P256
-load('ciphersuite_arc.sage')
 
-from sagelib.sigma_protocols import LinearRelation, CSRNG
+from sagelib.sigma_protocols import LinearRelation
+from sagelib.ciphersuite import NISchnorrProofShake128P256
 from util import to_bytes
-
-class DeterministicRNG(CSRNG):
-    """Wrapper to use ARC's RNG with sigma protocol CSRNG interface"""
-    def __init__(self, rng):
-        self.rng = rng
-
-    def random_scalar(self):
-        return G.random_scalar(self.rng)
 
 class CredentialRequestProof(object):
     @classmethod
@@ -52,11 +43,11 @@ class CredentialRequestProof(object):
         statement.append_equation(m2_enc_var, [(m2_var, gen_G_var), (r2_var, gen_H_var)])
 
         # Create prover with session ID and statement
-        session_id = context_string + "CredentialRequest"
+        session_id = context_string + b"CredentialRequest"
         prover = NISchnorrProofShake128P256(session_id, statement)
 
         # Generate proof
-        csrng = DeterministicRNG(rng)
+        csrng = rng
         return prover.prove(witness, csrng)
 
     @classmethod
@@ -83,7 +74,7 @@ class CredentialRequestProof(object):
         statement.append_equation(m2_enc_var, [(m2_var, gen_G_var), (r2_var, gen_H_var)])
 
         # Create verifier with session ID and statement
-        session_id = context_string + "CredentialRequest"
+        session_id = context_string + b"CredentialRequest"
         verifier = NISchnorrProofShake128P256(session_id, statement)
 
         # Verify proof
@@ -157,11 +148,11 @@ class CredentialResponseProof(object):
         statement.append_equation(enc_U_prime_var, [(b_var, X0_var), (t1_var, m1_enc_var), (t2_var, m2_enc_var)])
 
         # Create prover with session ID and statement
-        session_id = context_string + "CredentialResponse"
+        session_id = context_string + b"CredentialResponse"
         prover = NISchnorrProofShake128P256(session_id, statement)
 
         # Generate proof
-        csrng = DeterministicRNG(rng)
+        csrng = rng
         return prover.prove(witness, csrng)
 
     @classmethod
@@ -226,7 +217,7 @@ class CredentialResponseProof(object):
         statement.append_equation(enc_U_prime_var, [(b_var, X0_var), (t1_var, m1_enc_var), (t2_var, m2_enc_var)])
 
         # Create verifier with session ID and statement
-        session_id = context_string + "CredentialResponse"
+        session_id = context_string + b"CredentialResponse"
         verifier = NISchnorrProofShake128P256(session_id, statement)
 
         # Verify proof
@@ -286,17 +277,17 @@ class PresentationProof(object):
         statement.append_equation(gen_T_var, [(m1_var, tag_var), (nonce_var, tag_var)])
 
         # 5. Add range proof constraints
-        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, rng)
+        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var, nonce_commit, rng)
 
         # Combine witnesses: presentation (5) + range (3*k where k is number of bits)
         witness = presentation_witness + range_witness
 
         # Create prover with session ID and statement
-        session_id = context_string + "CredentialPresentation"
+        session_id = context_string + b"CredentialPresentation"
         prover = NISchnorrProofShake128P256(session_id, statement)
 
         # Generate proof
-        csrng = DeterministicRNG(rng)
+        csrng = rng
         proof_bytes = prover.prove(witness, csrng)
 
         # Parse proof bytes to extract challenge and responses
@@ -357,7 +348,7 @@ class PresentationProof(object):
         statement.append_equation(gen_T_var, [(m1_var, tag_var), (nonce_var, tag_var)])
 
         # 5. Add range proof constraints and verify the sum of the nonceCommit bit commitments
-        (statement, sum_valid) = VerifyRangeProofHelper(statement, presentation.proof.D, presentation.nonce_commit, presentation_limit, gen_G_var, gen_H_var)
+        (statement, sum_valid) = VerifyRangeProofHelper(statement, presentation.proof.D, presentation.nonce_commit, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var)
 
         # Create proof bytes from challenge and responses
         proof_bytes = b''
@@ -366,7 +357,7 @@ class PresentationProof(object):
             proof_bytes += G.ScalarField.serialize([response])
 
         # Create verifier with session ID and statement
-        session_id = context_string + "CredentialPresentation"
+        session_id = context_string + b"CredentialPresentation"
         verifier = NISchnorrProofShake128P256(session_id, statement)
 
         # Verify the joint proof

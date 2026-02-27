@@ -27,7 +27,7 @@ def ComputeBases(presentation_limit):
     # Sort in descending order
     return sorted(bases, reverse=True)
 
-def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, rng):
+def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var, nonce_commit, rng):
     """
     Add range proof constraints to statement.
 
@@ -38,6 +38,8 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
     - presentation_limit: Integer, the maximum value of the range (exclusive)
     - gen_G_var: Integer, variable index for generator G
     - gen_H_var: Integer, variable index for generator H
+    - nonce_commit_var: Integer, variable index for nonce_commit (used when D[0] == nonce_commit)
+    - nonce_commit: Element, the nonce commitment value
     - rng: Random number generator for creating blinding factors
 
     Outputs:
@@ -63,7 +65,7 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
     partial_sum = Integer(0)
 
     for i in range(len(bases) - 1):
-        s_i = G.random_scalar(rng)
+        s_i = rng.random_scalar()
         s.append(s_i)
         partial_sum += bases[i] * s_i
         s2_i = (Integer(1) - b[i]) * s_i
@@ -74,7 +76,7 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
     # Blinding value for the last bit commitment is chosen strategically
     # so that all the bit commitments will sum up to nonce_commit
     idx = len(bases) - 1
-    s_last = inverse_mod(Integer(bases[idx]), G.order()) * (nonce_blinding - partial_sum)
+    s_last = inverse_mod(Integer(bases[idx]), G.group_order) * (nonce_blinding - partial_sum)
     s.append(s_last)
     s2_last = (Integer(1) - b[idx]) * s_last
     s2.append(s2_last)
@@ -92,8 +94,13 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
     vars_s2 = scalar_vars[2::3]     # Every 3rd element starting at 2
 
     # Allocate and set element variables for bit commitments D
-    vars_D = statement.allocate_elements(num_bits)
-    statement.set_elements([(vars_D[i], D[i]) for i in range(num_bits)])
+    # Special case: when presentation_limit = 2, D[0] == nonce_commit
+    # In this case, reuse nonce_commit_var instead of allocating a new variable
+    if num_bits == 1 and D[0] == nonce_commit:
+        vars_D = [nonce_commit_var]
+    else:
+        vars_D = statement.allocate_elements(num_bits)
+        statement.set_elements([(vars_D[i], D[i]) for i in range(num_bits)])
 
     # Add constraints proving each b[i] is in {0,1}
     for i in range(num_bits):
@@ -109,7 +116,7 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
 
     return (statement, D, range_witness)
 
-def VerifyRangeProofHelper(statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var):
+def VerifyRangeProofHelper(statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var):
     """
     Add range proof constraints to statement and verify sum.
 
@@ -120,6 +127,7 @@ def VerifyRangeProofHelper(statement, D, nonce_commit, presentation_limit, gen_G
     - presentation_limit: Integer, the maximum value of the range (exclusive)
     - gen_G_var: Integer, variable index for generator G
     - gen_H_var: Integer, variable index for generator H
+    - nonce_commit_var: Integer, variable index for nonce_commit (used when D[0] == nonce_commit)
 
     Outputs:
     - statement: Modified statement with range proof constraints added
@@ -138,8 +146,13 @@ def VerifyRangeProofHelper(statement, D, nonce_commit, presentation_limit, gen_G
     vars_s2 = scalar_vars[2::3]     # Every 3rd element starting at 2
 
     # Allocate and set element variables for bit commitments D
-    vars_D = statement.allocate_elements(num_bits)
-    statement.set_elements([(vars_D[i], D[i]) for i in range(num_bits)])
+    # Special case: when presentation_limit = 2, D[0] == nonce_commit
+    # In this case, reuse nonce_commit_var instead of allocating a new variable
+    if num_bits == 1 and D[0] == nonce_commit:
+        vars_D = [nonce_commit_var]
+    else:
+        vars_D = statement.allocate_elements(num_bits)
+        statement.set_elements([(vars_D[i], D[i]) for i in range(num_bits)])
 
     # Add constraints proving each b[i] is in {0,1}
     for i in range(num_bits):

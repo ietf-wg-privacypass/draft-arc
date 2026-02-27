@@ -6,27 +6,19 @@ import sys
 # Load sage files directly instead of importing from sagelib
 load('arc_groups.sage')
 load('range_proof.sage')
-load('ciphersuite_arc.sage')
 
 try:
-    from sagelib.test_drng import TestDRNG
-    from sagelib.sigma_protocols import LinearRelation, CSRNG
+    from sigma.poc.sagelib.test_drng import SeededPRNG
+    from sigma.poc.sagelib.sigma_protocols import LinearRelation
+    from sigma.poc.sagelib.ciphersuite import NISchnorrProofShake128P256
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + str(e))
-
-class DeterministicRNG(CSRNG):
-    """Wrapper to use TestDRNG with sigma protocol CSRNG interface"""
-    def __init__(self, rng):
-        self.rng = rng
-
-    def random_scalar(self):
-        return G.random_scalar(self.rng)
 
 def test_valid_nonce_in_range():
     """Test that valid nonces in [0, presentationLimit) verify correctly"""
     print("Test 1: Valid nonces in range...")
 
-    rng = TestDRNG("test_valid_nonce".encode('utf-8'))
+    rng = SeededPRNG(b"test_valid_nonce" + b"\x00" * 16, G.ScalarField)
     presentation_limit = 10
 
     # Test several valid nonces
@@ -34,7 +26,7 @@ def test_valid_nonce_in_range():
 
     for nonce in test_nonces:
         # Generate blinding factor and commitment
-        nonce_blinding = G.random_scalar(rng)
+        nonce_blinding = rng.random_scalar()
         nonce_commit = nonce * GenG + nonce_blinding * GenH
 
         # Create prover statement
@@ -58,15 +50,15 @@ def test_valid_nonce_in_range():
         statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
         # Add range proof constraints
-        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, rng)
+        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var, nonce_commit, rng)
 
         # Combine witnesses
         witness = witness + range_witness
 
         # Generate proof
-        session_id = context_string + "RangeProofTest"
+        session_id = context_string + b"RangeProofTest"
         prover = NISchnorrProofShake128P256(session_id, statement)
-        csrng = DeterministicRNG(rng)
+        csrng = rng
         proof = prover.prove(witness, csrng)
 
         # Create verifier statement
@@ -87,7 +79,7 @@ def test_valid_nonce_in_range():
         verifier_statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
         # Verify range proof
-        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var)
+        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var)
 
         if not sum_valid:
             print("  FAILED: Sum check failed for nonce = {}".format(nonce))
@@ -106,13 +98,13 @@ def test_nonce_equals_limit():
     """Test that nonce == presentationLimit fails verification"""
     print("Test 2: Nonce equals presentation limit...")
 
-    rng = TestDRNG("test_nonce_equals_limit".encode('utf-8'))
+    rng = SeededPRNG(b"test_nonce_equals_limit" + b"\x00" * 9, G.ScalarField)
     presentation_limit = 5
     nonce = 5  # Equal to limit, should fail
 
     try:
         # Generate blinding factor and commitment
-        nonce_blinding = G.random_scalar(rng)
+        nonce_blinding = rng.random_scalar()
         nonce_commit = nonce * GenG + nonce_blinding * GenH
 
         # Create prover statement
@@ -130,14 +122,14 @@ def test_nonce_equals_limit():
         statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
         # Add range proof constraints - this should create an invalid decomposition
-        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, rng)
+        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var, nonce_commit, rng)
 
         witness = witness + range_witness
 
         # Generate proof
-        session_id = context_string + "RangeProofTest"
+        session_id = context_string + b"RangeProofTest"
         prover = NISchnorrProofShake128P256(session_id, statement)
-        csrng = DeterministicRNG(rng)
+        csrng = rng
         proof = prover.prove(witness, csrng)
 
         # Create verifier statement
@@ -154,7 +146,7 @@ def test_nonce_equals_limit():
         verifier_statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
         # Verify range proof
-        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var)
+        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var)
 
         # Either sum should be invalid, or proof should fail
         if not sum_valid:
@@ -177,13 +169,13 @@ def test_nonce_exceeds_limit():
     """Test that nonce > presentationLimit fails verification"""
     print("Test 3: Nonce exceeds presentation limit...")
 
-    rng = TestDRNG("test_nonce_exceeds_limit".encode('utf-8'))
+    rng = SeededPRNG(b"test_nonce_exceeds_limit" + b"\x00" * 8, G.ScalarField)
     presentation_limit = 5
     nonce = 10  # Exceeds limit, should fail
 
     try:
         # Generate blinding factor and commitment
-        nonce_blinding = G.random_scalar(rng)
+        nonce_blinding = rng.random_scalar()
         nonce_commit = nonce * GenG + nonce_blinding * GenH
 
         # Create prover statement
@@ -201,14 +193,14 @@ def test_nonce_exceeds_limit():
         statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
         # Add range proof constraints - this should create an invalid decomposition
-        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, rng)
+        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var, nonce_commit, rng)
 
         witness = witness + range_witness
 
         # Generate proof
-        session_id = context_string + "RangeProofTest"
+        session_id = context_string + b"RangeProofTest"
         prover = NISchnorrProofShake128P256(session_id, statement)
-        csrng = DeterministicRNG(rng)
+        csrng = rng
         proof = prover.prove(witness, csrng)
 
         # Create verifier statement
@@ -225,7 +217,7 @@ def test_nonce_exceeds_limit():
         verifier_statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
         # Verify range proof
-        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var)
+        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var)
 
         # Either sum should be invalid, or proof should fail
         if not sum_valid:
@@ -248,7 +240,7 @@ def test_negative_nonce():
     """Test that negative nonce fails verification"""
     print("Test 4: Negative nonce...")
 
-    rng = TestDRNG("test_negative_nonce".encode('utf-8'))
+    rng = SeededPRNG(b"test_negative_nonce" + b"\x00" * 13, G.ScalarField)
     presentation_limit = 5
 
     # In SageMath, we need to handle negative values carefully
@@ -258,7 +250,7 @@ def test_negative_nonce():
 
     try:
         # Generate blinding factor and commitment
-        nonce_blinding = G.random_scalar(rng)
+        nonce_blinding = rng.random_scalar()
         # This will compute (-1) * GenG + nonce_blinding * GenH
         # which is equivalent to (order - 1) * GenG + nonce_blinding * GenH
         nonce_commit = nonce * GenG + nonce_blinding * GenH
@@ -278,14 +270,14 @@ def test_negative_nonce():
         statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
         # Add range proof constraints - this should fail or create invalid decomposition
-        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, rng)
+        (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var, nonce_commit, rng)
 
         witness = witness + range_witness
 
         # Generate proof
-        session_id = context_string + "RangeProofTest"
+        session_id = context_string + b"RangeProofTest"
         prover = NISchnorrProofShake128P256(session_id, statement)
-        csrng = DeterministicRNG(rng)
+        csrng = rng
         proof = prover.prove(witness, csrng)
 
         # Create verifier statement
@@ -302,7 +294,7 @@ def test_negative_nonce():
         verifier_statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
         # Verify range proof
-        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var)
+        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, nonce_commit, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var)
 
         # Either sum should be invalid, or proof should fail
         if not sum_valid:
@@ -325,12 +317,12 @@ def test_tampered_bit_commitments():
     """Test that tampered D commitments fail verification"""
     print("Test 5: Tampered bit commitments...")
 
-    rng = TestDRNG("test_tampered_D".encode('utf-8'))
+    rng = SeededPRNG(b"test_tampered_D" + b"\x00" * 17, G.ScalarField)
     presentation_limit = 10
     nonce = 5  # Valid nonce
 
     # Generate blinding factor and commitment
-    nonce_blinding = G.random_scalar(rng)
+    nonce_blinding = rng.random_scalar()
     nonce_commit = nonce * GenG + nonce_blinding * GenH
 
     # Create prover statement
@@ -348,20 +340,20 @@ def test_tampered_bit_commitments():
     statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
     # Add range proof constraints
-    (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, rng)
+    (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var, nonce_commit, rng)
 
     witness = witness + range_witness
 
     # Generate proof
-    session_id = context_string + "RangeProofTest"
+    session_id = context_string + b"RangeProofTest"
     prover = NISchnorrProofShake128P256(session_id, statement)
-    csrng = DeterministicRNG(rng)
+    csrng = rng
     proof = prover.prove(witness, csrng)
 
     # Tamper with D commitments
     if len(D) > 0:
         tampered_D = list(D)
-        random_scalar = G.random_scalar(rng)
+        random_scalar = rng.random_scalar()
         tampered_D[0] = random_scalar * GenG  # Replace first commitment with random value
 
         # Create verifier statement
@@ -378,7 +370,7 @@ def test_tampered_bit_commitments():
         verifier_statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
         # Verify range proof with tampered D
-        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, tampered_D, nonce_commit, presentation_limit, gen_G_var, gen_H_var)
+        (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, tampered_D, nonce_commit, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var)
 
         # Either sum should be invalid, or proof should fail
         if not sum_valid:
@@ -400,12 +392,12 @@ def test_wrong_sum():
     """Test that D commitments that sum to wrong value fail verification"""
     print("Test 6: D commitments sum to wrong value...")
 
-    rng = TestDRNG("test_wrong_sum".encode('utf-8'))
+    rng = SeededPRNG(b"test_wrong_sum" + b"\x00" * 18, G.ScalarField)
     presentation_limit = 10
     nonce = 5  # Valid nonce
 
     # Generate blinding factor and commitment
-    nonce_blinding = G.random_scalar(rng)
+    nonce_blinding = rng.random_scalar()
     nonce_commit = nonce * GenG + nonce_blinding * GenH
 
     # Create prover statement
@@ -423,19 +415,19 @@ def test_wrong_sum():
     statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
     # Add range proof constraints
-    (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, rng)
+    (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var, nonce_commit, rng)
 
     witness = witness + range_witness
 
     # Generate proof
-    session_id = context_string + "RangeProofTest"
+    session_id = context_string + b"RangeProofTest"
     prover = NISchnorrProofShake128P256(session_id, statement)
-    csrng = DeterministicRNG(rng)
+    csrng = rng
     proof = prover.prove(witness, csrng)
 
     # Create a different nonce commitment (for nonce 7 instead of 5)
     different_nonce = 7
-    different_nonce_blinding = G.random_scalar(rng)
+    different_nonce_blinding = rng.random_scalar()
     wrong_nonce_commit = different_nonce * GenG + different_nonce_blinding * GenH
 
     # Create verifier statement
@@ -452,7 +444,7 @@ def test_wrong_sum():
     verifier_statement.append_equation(nonce_commit_var, [(nonce_var, gen_G_var), (nonce_blinding_var, gen_H_var)])
 
     # Verify range proof - D should not sum to wrong_nonce_commit
-    (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, wrong_nonce_commit, presentation_limit, gen_G_var, gen_H_var)
+    (verifier_statement, sum_valid) = VerifyRangeProofHelper(verifier_statement, D, wrong_nonce_commit, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var)
 
     if not sum_valid:
         print("  PASSED: Sum check correctly failed for wrong nonce commitment")
