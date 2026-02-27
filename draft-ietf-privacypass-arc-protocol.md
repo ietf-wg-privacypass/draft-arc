@@ -394,7 +394,8 @@ presentation_context = concat(
   encode(2, len(challenge.redemption_context)),
   challenge.redemption_context,
   issuer_key_id)
-state = MakePresentationState(credential, presentation_context, presentation_limit)
+state = MakePresentationState(credential, presentation_context,
+  presentation_limit)
 newState, nonce, presentation = Present(state)
 ~~~
 
@@ -457,14 +458,8 @@ presentation_context = concat(
   tokenChallenge.redemption_context,
   issuer_key_id)
 
-valid = VerifyPresentation(
-  skI,
-  pkI,
-  request_context,
-  presentation_context,
-  nonce,
-  presentation,
-  presentation_limit)
+valid, tag = VerifyPresentation(skI, pkI, request_context,
+  presentation_context, presentation, presentation_limit)
 ~~~
 
 This function returns True if the CredentialToken is valid, and False otherwise.

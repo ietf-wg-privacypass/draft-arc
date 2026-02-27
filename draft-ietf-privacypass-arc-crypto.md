@@ -278,7 +278,8 @@ def SetupServer():
   X0 = x0 * G.GeneratorG() + x0Blinding * G.GeneratorH()
   X1 = x1 * G.GeneratorH()
   X2 = x2 * G.GeneratorH()
-  return ServerPrivateKey(x0, x1, x2, x0Blinding), ServerPublicKey(X0, X1, X2)
+  return (ServerPrivateKey(x0, x1, x2, x0Blinding),
+    ServerPublicKey(X0, X1, X2))
 ~~~
 
 The server public key can be serialized as follows:
@@ -321,16 +322,19 @@ Each of these steps is described in the following subsections.
 Given a request context, the process for creating a credential request is as follows:
 
 ~~~
-(clientSecrets, request) = CreateCredentialRequest(requestContext)
+(clientSecrets, request) = CreateCredentialRequest(requestContext, rng)
 
 Inputs:
 - requestContext: Data, context for the credential request
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
 - request:
   - m1Enc: Element, first encrypted secret.
   - m2Enc: Element, second encrypted secret.
-  - requestProof: ZKProof, a proof of correct generation of m1Enc and m2Enc.
+  - requestProof: String (ZKProof), a proof of correct generation of
+    m1Enc and m2Enc.
 - clientSecrets:
   - m1: Scalar, first secret.
   - m2: Scalar, second secret.
@@ -342,14 +346,15 @@ Parameters:
 - generatorG: Element, equivalent to G.GeneratorG()
 - generatorH: Element, equivalent to G.GeneratorH()
 
-def CreateCredentialRequest(requestContext):
+def CreateCredentialRequest(requestContext, rng):
   m1 = G.RandomScalar()
   m2 = G.HashToScalar(requestContext, "requestContext")
   r1 = G.RandomScalar()
   r2 = G.RandomScalar()
   m1Enc = m1 * generatorG + r1 * generatorH
   m2Enc = m2 * generatorG + r2 * generatorH
-  requestProof = MakeCredentialRequestProof(m1, m2, r1, r2, m1Enc, m2Enc)
+  requestProof = MakeCredentialRequestProof(m1, m2, r1, r2,
+    m1Enc, m2Enc, rng)
   request = (m1Enc, m2Enc, requestProof)
   clientSecrets = (m1, m2, r1, r2)
   return (clientSecrets, request)
@@ -363,11 +368,7 @@ The resulting request can be serialized as follows.
 struct {
   uint8 m1Enc[Ne];
   uint8 m2Enc[Ne];
-  uint8 challenge[Ns];
-  uint8 response0[Ns];
-  uint8 response1[Ns];
-  uint8 response2[Ns];
-  uint8 response3[Ns];
+  uint8 requestProof[5*Ns];
 } CredentialRequest;
 ~~~
 
@@ -379,7 +380,8 @@ Given a credential request and server public and private keys, the process
 for creating a credential response is as follows.
 
 ~~~ pseudocode
-response = CreateCredentialResponse(serverPrivateKey, serverPublicKey, request)
+response = CreateCredentialResponse(serverPrivateKey,
+  serverPublicKey, request, rng)
 
 Inputs:
 - serverPrivateKey:
@@ -394,7 +396,10 @@ Inputs:
 - request:
   - m1Enc: Element, first encrypted secret.
   - m2Enc: Element, second encrypted secret.
-  - requestProof: ZKProof, a proof of correct generation of m1Enc and m2Enc.
+  - requestProof: String (ZKProof), a proof of correct generation
+    of m1Enc and m2Enc.
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
 - U: Element, a randomized generator for the response, `b*G`.
@@ -403,7 +408,7 @@ Outputs:
 - X1Aux: Element, auxiliary point for X1.
 - X2Aux: Element, auxiliary point for X2.
 - HAux: Element, auxiliary point for generatorH.
-- responseProof: ZKProof, a proof of correct generation of
+- responseProof: String (ZKProof), a proof of correct generation of
   U, encUPrime, server public keys, and auxiliary points.
 
 Parameters:
@@ -414,7 +419,7 @@ Parameters:
 Exceptions:
 - VerifyError, raised when response verification fails
 
-def CreateCredentialResponse(serverPrivateKey, serverPublicKey, request):
+def CreateCredentialResponse(serverPrivateKey, serverPublicKey, request, rng):
   if VerifyCredentialRequestProof(request) == false:
     raise VerifyError
 
@@ -429,7 +434,8 @@ def CreateCredentialResponse(serverPrivateKey, serverPublicKey, request):
   HAux = b * generatorH
 
   responseProof = MakeCredentialResponseProof(serverPrivateKey,
-    serverPublicKey, request, b, U, encUPrime, X0Aux, X1Aux, X2Aux, HAux)
+    serverPublicKey, request, b, U, encUPrime,
+    X0Aux, X1Aux, X2Aux, HAux, rng)
   return (U, encUPrime, X0Aux, X1Aux, X2Aux, HAux, responseProof)
 ~~~
 
@@ -443,14 +449,7 @@ struct {
   uint8 X1Aux[Ne];
   uint8 X2Aux[Ne];
   uint8 HAux[Ne];
-  uint8 challenge[Ns];
-  uint8 response0[Ns];
-  uint8 response1[Ns];
-  uint8 response2[Ns];
-  uint8 response3[Ns];
-  uint8 response4[Ns];
-  uint8 response5[Ns];
-  uint8 response6[Ns];
+  uint8 responseProof[7*Ns];
 } CredentialResponse
 ~~~
 
@@ -463,7 +462,8 @@ secrets produced when creating a credential request, the process for
 finalizing the issuance flow and creating a credential is as follows.
 
 ~~~
-credential = FinalizeCredential(clientSecrets, serverPublicKey, request, response)
+credential = FinalizeCredential(clientSecrets,
+  serverPublicKey, request, response)
 
 Inputs:
 - clientSecrets:
@@ -475,7 +475,8 @@ Inputs:
 - request:
   - m1Enc: Element, first encrypted secret.
   - m2Enc: Element, second encrypted secret.
-  - requestProof: ZKProof, a proof of correct generation of m1Enc and m2Enc.
+  - requestProof: String (ZKProof), a proof of correct generation
+    of m1Enc and m2Enc.
 - response:
   - U: Element, a randomized generator for the response. `b*G`.
   - encUPrime: Element, encrypted UPrime.
@@ -483,13 +484,15 @@ Inputs:
   - X1Aux: Element, auxiliary point for X1.
   - X2Aux: Element, auxiliary point for X2.
   - HAux: Element, auxiliary point for generatorH.
-  - responseProof: ZKProof, a proof of correct generation of U, encUPrime, server public keys, and auxiliary points.
+  - responseProof: String (ZKProof), a proof of correct generation of
+    U, encUPrime, server public keys, and auxiliary points.
 
 Outputs:
 - credential:
   - m1: Scalar, client's first secret.
   - U: Element, a randomized generator for the response. `b*G`.
-  - UPrime: Element, the MAC over the server's private keys and the client's secrets.
+  - UPrime: Element, the MAC over the server's private keys and the
+    client's secrets.
   - X1: Element, server public key 1.
 
 Exceptions:
@@ -500,10 +503,14 @@ Parameters:
 - generatorG: Element, equivalent to G.GeneratorG()
 - generatorH: Element, equivalent to G.GeneratorH()
 
-def FinalizeCredential(clientSecrets, serverPublicKey, request, response):
-  if VerifyCredentialResponseProof(serverPublicKey, response, request) == false:
+def FinalizeCredential(clientSecrets, serverPublicKey, request,
+  response):
+  if VerifyCredentialResponseProof(serverPublicKey, response,
+    request) == false:
     raise VerifyError
-  UPrime = response.encUPrime - response.X0Aux - clientSecrets.r1 * response.X1Aux - clientSecrets.r2 * response.X2Aux
+  UPrime = response.encUPrime - response.X0Aux
+    - clientSecrets.r1 * response.X1Aux
+    - clientSecrets.r2 * response.X2Aux
   return (clientSecrets.m1, response.U, UPrime, serverPublicKey.X1)
 ~~~
 
@@ -540,25 +547,32 @@ with a credential, presentation context, and presentation limit. It is then muta
 after each presentation construction (as described in {{presentation-construction}}).
 
 ~~~
-state = MakePresentationState(credential, presentationContext, presentationLimit)
+state = MakePresentationState(credential, presentationContext,
+  presentationLimit)
 
 Inputs:
 - credential:
   - m1: Scalar, client's first secret.
   - U: Element, a randomized generator for the response `b*G`.
-  - UPrime: Element, the MAC over the server's private keys and the client's secrets.
+  - UPrime: Element, the MAC over the server's private keys and the
+    client's secrets.
   - X1: Element, server public key 1.
-- presentationContext: Data (public), used for presentation tag computation.
+- presentationContext: Data (public), used for presentation tag
+  computation.
 - presentationLimit: Integer, the fixed presentation limit.
 
 Outputs:
 - credential
-- presentationContext: Data (public), used for presentation tag computation.
-- nextNonce: Integer, the next nonce that can be used. This increments by 1 for each use.
+- presentationContext: Data (public), used for presentation tag
+  computation.
+- nextNonce: Integer, the next nonce that can be used. This
+  increments by 1 for each use.
 - presentationLimit: Integer, the fixed presentation limit.
 
-def MakePresentationState(credential, presentationContext, presentationLimit):
-  return PresentationState(credential, presentationContext, 0, presentationLimit)
+def MakePresentationState(credential, presentationContext,
+  presentationLimit):
+  return PresentationState(credential, presentationContext, 0,
+    presentationLimit)
 ~~~
 
 ### Presentation Construction {#presentation-construction}
@@ -572,14 +586,18 @@ a presentation accepts as input a presentation state and then outputs an updated
 state.
 
 ~~~
-newState, nonce, presentation = Present(state)
+newState, nonce, presentation = Present(state, rng)
 
 Inputs:
 state: input PresentationState
   - credential
-  - presentationContext: Data (public), used for presentation tag computation.
-  - nextNonce: Integer, the next nonce that can be used. This increments by 1 for each use.
+  - presentationContext: Data (public), used for presentation tag
+    computation.
+  - nextNonce: Integer, the next nonce that can be used. This
+    increments by 1 for each use.
   - presentationLimit: Integer, the fixed presentation limit.
+rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
 - newState: updated PresentationState
@@ -588,9 +606,12 @@ Outputs:
   - U: Element, re-randomized from the U in the response.
   - UPrimeCommit: Element, a public key to the issued UPrime.
   - m1Commit: Element, a public key to the client secret (m1).
-  - tag: Element, the tag element used for enforcing the presentation limit.
+  - tag: Element, the tag element used for enforcing the
+    presentation limit.
   - nonceCommit: Element, a Pedersen commitment to the nonce.
-  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).
+  - presentationProof: ZKProof, a joint proof of correct generation
+    of the presentation and that the committed nonce is in
+    [0, presentationLimit).
 
 Parameters:
 - G: Group
@@ -598,9 +619,10 @@ Parameters:
 - generatorH: Element, equivalent to G.GeneratorH()
 
 Exceptions:
-- LimitExceededError, raised when the presentation count meets or exceeds the presentation limit for the given presentation context
+- LimitExceededError, raised when the presentation count meets or
+  exceeds the presentation limit for the given presentation context
 
-def Present(state):
+def Present(state, rng):
   if state.nextNonce >= state.presentationLimit:
     raise LimitExceededError
 
@@ -626,11 +648,12 @@ def Present(state):
   V = z * state.credential.X1 - r * generatorG
 
   # Generate presentation proof with integrated range proof
-  presentationProof = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
-                                                   state.credential, V, r, z, nonce,
-                                                   nonceBlinding, nonceCommit, state.presentationLimit)
+  presentationProof = MakePresentationProof(U, UPrimeCommit,
+    m1Commit, tag, generatorT, state.credential, V, r, z, nonce,
+    nonceBlinding, nonceCommit, state.presentationLimit, rng)
 
-  presentation = (U, UPrimeCommit, m1Commit, tag, nonceCommit, presentationProof)
+  presentation = (U, UPrimeCommit, m1Commit, tag, nonceCommit,
+    presentationProof)
 
   return state, nonce, presentation
 ~~~
@@ -670,13 +693,9 @@ verification of the range proof, against server-computed values. Note that the s
 the raw nonce value, only the Pedersen commitment to it.
 
 ~~~
-validity, tag = VerifyPresentation(
-  serverPrivateKey,
-  serverPublicKey,
-  requestContext,
-  presentationContext,
-  presentation,
-  presentationLimit)
+validity, tag = VerifyPresentation(serverPrivateKey,
+  serverPublicKey, requestContext, presentationContext,
+  presentation, presentationLimit)
 
 Inputs:
 - serverPrivateKey:
@@ -689,45 +708,44 @@ Inputs:
   - X1: Element, server public key 1.
   - X2: Element, server public key 2.
 - requestContext: Data, context for the credential request.
-- presentationContext: Data (public), used for presentation tag computation.
+- presentationContext: Data (public), used for presentation tag
+  computation.
 - presentation:
   - U: Element, re-randomized from the U in the response.
   - UPrimeCommit: Element, a public key to the issued UPrime.
   - m1Commit: Element, a public key to the client secret (m1).
-  - tag: Element, the tag element used for enforcing the presentation limit.
+  - tag: Element, the tag element used for enforcing the
+    presentation limit.
   - nonceCommit: Element, a Pedersen commitment to the nonce.
-  - presentationProof: ZKProof, a joint proof of correct generation of the presentation and that the committed nonce is in [0, presentationLimit).
+  - presentationProof: ZKProof, a joint proof of correct generation
+    of the presentation and that the committed nonce is in
+    [0, presentationLimit).
 - presentationLimit: Integer, the fixed presentation limit.
 
 Outputs:
-- validity: Boolean, True if the presentation is valid, False otherwise.
-- tag: Bytes, the value of the presentation tag used for rate limiting.
+- validity: Boolean, True if the presentation is valid,
+  False otherwise.
+- tag: Bytes, the value of the presentation tag used for rate
+  limiting.
 
 Parameters:
 - G: Group
 - generatorG: Element, equivalent to G.GeneratorG()
 - generatorH: Element, equivalent to G.GeneratorH()
 
-def VerifyPresentation(
-  serverPrivateKey,
-  serverPublicKey,
-  requestContext,
-  presentationContext,
-  presentation,
+def VerifyPresentation(serverPrivateKey, serverPublicKey,
+  requestContext, presentationContext, presentation,
   presentationLimit):
 
   # The presentation proof verifies the relationship between the tag,
-  # m1, and the committed nonce using zero-knowledge techniques, without
-  # learning the value of the nonce. It also includes verification that
-  # the committed nonce is in [0, presentationLimit).
+  # m1, and the committed nonce using zero-knowledge techniques,
+  # without learning the value of the nonce. It also includes
+  # verification that the committed nonce is in
+  # [0, presentationLimit).
 
-  validity = VerifyPresentationProof(
-    serverPrivateKey,
-    serverPublicKey,
-    requestContext,
-    presentationContext,
-    presentation,
-    presentationLimit)
+  validity = VerifyPresentationProof(serverPrivateKey,
+    serverPublicKey, requestContext, presentationContext,
+    presentation, presentationLimit)
 
   return validity, presentation.tag
 ~~~
@@ -739,246 +757,7 @@ look up the tags corresponding to the associated requestContext and presentation
 
 # Zero-Knowledge Proofs
 
-This section describes a Schnorr proof compiler that is used for the construction of other proofs needed throughout
-the ARC protocol. {{compiler}} describes the compiler, and the remaining sections describe how it is used for
-the purposes of producing ARC proofs.
-
-## Schnorr Compiler {#compiler}
-
-The compiler specified in this section automates the Fiat-Shamir transform that is often used to
-transform interactive zero-knowledge proofs into non-interactive proofs such that they can be used
-to non-interactively prove various statements of importance in higher-level protocols, such as ARC.
-The compiler consists of a prover and verifier role. The prover constructs a transcript for the
-proof and then applies the Fiat-Shamir heuristic to generate the resulting challenge and response
-values. The verifier reconstructs the same transcript to verify the proof.
-
-The prover and verifier roles are specified below in {{prover}} and {{verifier}}, respectively.
-
-### Prover
-
-The prover role consists of four functions:
-
-- AppendScalar: This function adds a scalar representation to the transcript.
-- AppendElement: This function adds an element representation to the transcript.
-- Constrain: This function applies an explicit constraint to the proof, where the constraint is expressed as equality between some element and a linear combination of scalar and element representations. An example constraint might be `Z = aX + bY`, for scalars `a`, `b`, and elements
-`X`, `Y`, `Z`.
-- Prove: This function applies the Fiat-Shamir heuristic to the protocol transcript and set of
-constraints to produce a zero-knowledge proof that can be verified.
-
-These functions are defined in the following sub-sections.
-
-In addition, the prover role consists of the following state:
-
-- label: Data, a value representing the context in which the proof will be used
-- scalars: `[Integer]`, An ordered set of representation of scalar variables to use in the proof. Each scalar has a label associated with it, stored in a list called `scalar_labels`.
-- elements: `[Integer]`, An ordered set of representation of element variables to use in the proof. Each element has a label associated with it, stored in a list called `element_labels`.
-- constraints: a set of constraints, where each constraint consists of a constraint element and a linear combination of variables.
-
-#### AppendScalar
-
-~~~
-AppendScalar(label, assignment)
-
-Inputs:
-- label: Data, Scalar variable label
-- assignment: Scalar variable
-
-Outputs:
-- Integer representation of the new scalar variable
-
-def AppendScalar(label, assignment):
-  state.scalars.append(assignment)
-  state.scalar_labels.append(label)
-  return len(state.scalars) - 1
-~~~
-
-#### AppendElement
-
-~~~
-AppendElement(label, assignment)
-
-Inputs:
-- label: Data, Element variable label
-- assignment: Element variable
-
-Outputs:
-- Integer representation of the new element variable
-
-def AppendElement(label, assignment):
-  state.elements.append(assignment)
-  state.element_labels.append(label)
-  return len(state.elements) - 1
-~~~
-
-#### Constrain
-
-~~~
-Constrain(constraintElement, linearCombination)
-
-Inputs:
-- constraintElement: Integer, representation of constraint element
-- linearCombination: linear combination of scalar and element variable (representations)
-
-def Constrain(constraintElement, linearCombination):
-  state.constraints.append((constraintElement, linearCombination))
-~~~
-
-#### Prove
-
-The Prove function is defined below.
-
-~~~
-Prove()
-
-Outputs:
-- ZKProof, a proof consisting of a challenge Scalar and then fixed number of response Scalar values
-
-Parameters:
-- G: Group
-- generatorG: Element, equivalent to G.GeneratorG()
-- generatorH: Element, equivalent to G.GeneratorH()
-
-Exceptions:
-- InvalidVariableAllocationError, raised when the prover was incorrectly configured
-
-def Prove():
-  blindings = [G.RandomScalar() for i in range(len(state.scalars))]
-
-  blinded_elements = []
-  for (constraint_point, linear_combination) in state.constraints:
-    if constraint_point.index > len(state.elements):
-      raise InvalidVariableAllocationError
-
-    for (scalar_var, element_var) in linear_combination:
-      if scalar_var.index > len(state.scalars):
-        raise InvalidVariableAllocationError
-      if element_var.index > len(state.elements):
-        raise InvalidVariableAllocationError
-
-    scalar_index = linear_combination[0][0].index
-    element_index = linear_combination[0][1].index
-    blinded_element = blindings[scalar_index] * state.elements[element_index]
-
-    for i, pair in enumerate(linear_combination):
-      if i > 0:
-        scalar_index = pair[0].index
-        element_index = pair[1].index
-        blinded_element += blindings[scalar_index] * state.elements[element_index]
-
-        blinded_elements.append(blinded_element)
-
-  # Obtain a scalar challenge
-  challenge = ComposeChallenge(state.label, state.elements, blinded_elements)
-
-  # Compute response scalars from the challenge, scalars, and blindings.
-  responses = []
-  for (index, scalar) in enumerate(state.scalars):
-    blinding = blindings[index]
-    responses.append(blinding - challenge * scalar)
-
-  return ZKProof(challenge, responses)
-~~~
-
-The function ComposeChallenge is defined below.
-
-~~~
-ComposeChallenge(label, elements, blinded_elements)
-
-Inputs:
-- label: Data, the proof label
-- elements: [Element], ordered list of elements
-- blinded_elements: [Element], ordered list of blinded elements
-
-Outputs:
-- challenge, Scalar
-
-Parameters:
-- G: Group
-- generatorG: Element, equivalent to G.GeneratorG()
-- generatorH: Element, equivalent to G.GeneratorH()
-
-def ComposeChallenge(label, elements, blinded_elements):
-  challenge_input = Data() # Empty Data
-
-  for element in elements:
-    serialized_element = G.SerializeElement(element)
-    challenge_input += I2OSP(len(serialized_element), 2) + serialized_element
-
-  for blinded_element in blinded_elements:
-    serialized_blinded_element = G.SerializeElement(blinded_element)
-    challenge_input += I2OSP(len(serialized_blinded_element), 2) + serialized_blinded_element
-
-  return G.HashToScalar(challenge_input, label)
-~~~
-
-### Verifier {#verifier}
-
-The verifier role consists of four functions:
-
-- AppendScalar: This function adds a scalar representation to the transcript.
-- AppendElement: This function adds an element representation to the transcript.
-- Constrain: This function applies an explicit constraint to the proof, where the constraint is expressed as equality between some element and a linear combination of scalar and element representations. An example constraint might be `Z = aX + bY`, for scalars `a`, `b`, and elements
-`X`, `Y`, `Z`.
-- Verify: This function applies the Fiat-Shamir heuristic to verify the zero-knowledge proof.
-
-AppendScalar and Verify are defined in the following sub-sections. AppendElement and Constrain matches the functionality used in the prover role.
-
-#### AppendScalar
-
-~~~
-AppendScalar(label)
-
-Inputs:
-- label: Data, Scalar variable label
-
-Outputs:
-- Integer representation of the new scalar variable
-
-def AppendScalar(label):
-  state.scalar_labels.append(label)
-  return len(state.scalar_labels) - 1
-~~~
-
-#### Verify
-
-~~~
-Verify(proof)
-
-Inputs:
-- ZKProof, a proof consisting of a challenge Scalar and then fixed number of response Scalar values
-
-Outputs:
-- Boolean, True if the proof is valid, False otherwise.
-
-Parameters:
-- G: Group
-- generatorG: Element, equivalent to G.GeneratorG()
-- generatorH: Element, equivalent to G.GeneratorH()
-
-Exceptions:
-- InvalidVariableAllocationError, raised when the prover was incorrectly configured
-
-def Verify(proof):
-  if len(state.elements) != len(state.element_labels):
-    raise InvalidVariableAllocationError
-
-  blinded_elements = []
-  for (constraint_element, linear_combination) in state.constraints:
-    if constraint_element.index > len(state.elements):
-      raise InvalidVariableAllocationError
-    for (_, element_var) in linear_combination:
-      if element_var.index > len(state.elements):
-        raise InvalidVariableAllocationError
-
-    challenge_element = proof.challenge * state.elements[constraint_element.index]
-    for i, pair in enumerate(linear_combination):
-      challenge_element += proof.responses[pair[0].index] * state.elements[pair[1].index]
-
-    blinded_elements.append(challenge_element)
-
-  challenge = ComposeChallenge(state.label, state.elements, blinded_elements)
-  return challenge == proof.challenge
-~~~
+This section uses the Interactive Sigma Protocol {{!SIGMA=I-D.draft-irtf-cfrg-sigma-protocols-01}} to create zero-knowledge proofs of knowledge for various ARC operations, and the Fiat-Shamir Transform {{!FIAT-SHAMIR=I-D.draft-irtf-cfrg-fiat-shamir-01}} to make those proofs non-interactive.
 
 ## CredentialRequest Proof {#request-proof}
 
@@ -992,7 +771,8 @@ The request proof is a proof of knowledge of (m1, m2, r1, r2) used to generate t
 ### CredentialRequest Proof Creation
 
 ~~~
-requestProof = MakeCredentialRequestProof(m1, m2, r1, r2, m1Enc, m2Enc)
+requestProof = MakeCredentialRequestProof(m1, m2, r1, r2, m1Enc,
+  m2Enc, rng)
 
 Inputs:
 - m1: Scalar, first secret.
@@ -1001,14 +781,11 @@ Inputs:
 - r2: Scalar, blinding factor for second secret.
 - m1Enc: Element, first encrypted secret.
 - m2Enc: Element, second encrypted secret.
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
-- proof: ZKProof
-  - challenge: Scalar, the challenge used in the proof of valid encryption.
-  - response0: Scalar, the response corresponding to m1.
-  - response1: Scalar, the response corresponding to m2.
-  - response2: Scalar, the response corresponding to r1.
-  - response3: Scalar, the response corresponding to r2.
+- proof: String (ZKProof)
 
 Parameters:
 - G: Group
@@ -1016,27 +793,39 @@ Parameters:
 - generatorH: Element, equivalent to G.GeneratorH()
 - contextString: public input
 
-def MakeCredentialRequestProof(m1, m2, r1, r2, m1Enc, m2Enc):
-  prover = Prover(contextString + "CredentialRequest")
+def MakeCredentialRequestProof(m1, m2, r1, r2, m1Enc, m2Enc, rng):
+  statement = LinearRelation(G)
+  [m1Var, m2Var, r1Var, r2Var] = statement.allocate_scalars(4)
+  witness = [m1, m2, r1, r2]
 
-  m1Var = prover.AppendScalar("m1", m1)
-  m2Var = prover.AppendScalar("m2", m2)
-  r1Var = prover.AppendScalar("r1", r1)
-  r2Var = prover.AppendScalar("r2", r2)
-
-  genGVar = prover.AppendElement("genG", generatorG)
-  genHVar = prover.AppendElement("genH", generatorH)
-  m1EncVar = prover.AppendElement("m1Enc", m1Enc)
-  m2EncVar = prover.AppendElement("m2Enc", m2Enc)
+  [genGVar, genHVar, m1EncVar, m2EncVar]
+    = statement.allocate_elements(4)
+  statement.set_elements([(genGVar, generatorG),
+    (genHVar, generatorH), (m1EncVar, m1Enc), (m2EncVar, m2Enc)])
 
   # 1. m1Enc = m1 * generatorG + r1 * generatorH
-  prover.Constrain(m1EncVar, [(m1Var, genGVar), (r1Var, genHVar)])
+  statement.append_equation(m1EncVar,
+    [(m1Var, genGVar), (r1Var, genHVar)])
 
   # 2. m2Enc = m2 * generatorG + r2 * generatorH
-  prover.Constrain(m2EncVar, [(m2Var, genGVar), (r2Var, genHVar)])
+  statement.append_equation(m2EncVar,
+    [(m2Var, genGVar), (r2Var, genHVar)])
 
-  return prover.Prove()
+  session_id = contextString + "CredentialRequest"
+  prover = NISchnorrProofShake128P256(session_id, statement)
+  return prover.prove(witness, rng)
 ~~~
+
+Where the request proof returned is a serialization of the following:
+~~~
+- challenge: Scalar, the challenge used in the proof of valid
+  encryption.
+- response0: Scalar, the response corresponding to m1.
+- response1: Scalar, the response corresponding to m2.
+- response2: Scalar, the response corresponding to r1.
+- response3: Scalar, the response corresponding to r2.
+~~~
+
 
 ### CredentialRequest Proof Verification
 
@@ -1047,12 +836,8 @@ Inputs:
 - request:
   - m1Enc: Element, first encrypted secret.
   - m2Enc: Element, second encrypted secret.
-  - requestProof: ZKProof, a proof of correct generation of m1Enc and m2Enc.
-    - challenge: Scalar, the challenge used in the proof of valid encryption.
-    - response0: Scalar, the response corresponding to m1.
-    - response1: Scalar, the response corresponding to m2.
-    - response2: Scalar, the response corresponding to r1.
-    - response3: Scalar, the response corresponding to r2.
+  - requestProof: String (ZKProof), a proof of correct generation
+    of m1Enc and m2Enc.
 
 Outputs:
 - validity: Boolean, True if the proof verifies correctly, False otherwise.
@@ -1064,25 +849,25 @@ Parameters:
 - contextString: public input
 
 def VerifyCredentialRequestProof(request):
-  verifier = Verifier(contextString + "CredentialRequest")
+  statement = LinearRelation(G)
+  [m1Var, m2Var, r1Var, r2Var] = statement.allocate_scalars(4)
 
-  m1Var = verifier.AppendScalar("m1")
-  m2Var = verifier.AppendScalar("m2")
-  r1Var = verifier.AppendScalar("r1")
-  r2Var = verifier.AppendScalar("r2")
-
-  genGVar = verifier.AppendElement("genG", generatorG)
-  genHVar = verifier.AppendElement("genH", generatorH)
-  m1EncVar = verifier.AppendElement("m1Enc", request.m1Enc)
-  m2EncVar = verifier.AppendElement("m2Enc", request.m2Enc)
+  [genGVar, genHVar, m1EncVar, m2EncVar]
+    = statement.allocate_elements(4)
+  statement.set_elements([(genGVar, generatorG),
+    (genHVar, generatorH), (m1EncVar, m1Enc), (m2EncVar, m2Enc)])
 
   # 1. m1Enc = m1 * generatorG + r1 * generatorH
-  verifier.Constrain(m1EncVar, [(m1Var, genGVar), (r1Var, genHVar)])
+  statement.append_equation(m1EncVar,
+    [(m1Var, genGVar), (r1Var, genHVar)])
 
   # 2. m2Enc = m2 * generatorG + r2 * generatorH
-  verifier.Constrain(m2EncVar, [(m2Var, genGVar), (r2Var, genHVar)])
+  statement.append_equation(m2EncVar,
+    [(m2Var, genGVar), (r2Var, genHVar)])
 
-  return verifier.Verify(request.requestProof)
+  session_id = contextString + "CredentialRequest"
+  verifier = NISchnorrProofShake128P256(session_id, statement)
+  return verifier.verify(request.requestProof)
 ~~~
 
 ## CredentialResponse Proof {#response-proof}
@@ -1109,7 +894,9 @@ The response proof is a proof of knowledge of (x0, x1, x2, x0Blinding, b) used i
 ### CredentialResponse Proof Creation
 
 ~~~
-responseProof = MakeCredentialResponseProof(serverPrivateKey, serverPublicKey, request, b, U, encUPrime, X0Aux, X1Aux, X2Aux, HAux)
+responseProof = MakeCredentialResponseProof(serverPrivateKey,
+  serverPublicKey, request, b, U, encUPrime,
+  X0Aux, X1Aux, X2Aux, HAux, rng)
 
 Inputs:
 - serverPrivateKey:
@@ -1124,23 +911,18 @@ Inputs:
 - request:
   - m1Enc: Element, first encrypted secret.
   - m2Enc: Element, second encrypted secret.
-  - requestProof: ZKProof, a proof of correct generation of m1Enc and m2Enc.
+  - requestProof: String (ZKProof), a proof of correct generation
+    of m1Enc and m2Enc.
 - encUPrime: Element, encrypted UPrime.
 - X0Aux: Element, auxiliary point for X0.
 - X1Aux: Element, auxiliary point for X1.
 - X2Aux: Element, auxiliary point for X2.
 - HAux: Element, auxiliary point for generatorH.
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
-- proof: ZKProof
-  - challenge: Scalar, the challenge used in the proof of valid response.
-  - response0: Scalar, the response corresponding to x0.
-  - response1: Scalar, the response corresponding to x1.
-  - response2: Scalar, the response corresponding to x2.
-  - response3: Scalar, the response corresponding to x0Blinding.
-  - response4: Scalar, the response corresponding to b.
-  - response5: Scalar, the response corresponding to t1.
-  - response6: Scalar, the response corresponding to t2.
+- proof: String (ZKProof)
 
 Parameters:
 - G: Group
@@ -1148,69 +930,82 @@ Parameters:
 - generatorH: Element, equivalent to G.GeneratorH()
 - contextString: public input
 
-def MakeCredentialResponseProof(serverPrivateKey, serverPublicKey, request, b, U, encUPrime, X0Aux, X1Aux, X2Aux, HAux):
-  prover = Prover(contextString + "CredentialResponse")
+def MakeCredentialResponseProof(serverPrivateKey, serverPublicKey,
+  request, b, U, encUPrime, X0Aux, X1Aux, X2Aux, HAux, rng):
+  statement = LinearRelation(G)
+  [x0Var, x1Var, x2Var, x0BlindingVar, bVar, t1Var, t2Var]
+    = statement.allocate_scalars(7)
+  witness = [serverPrivateKey.x0, serverPrivateKey.x1,
+    serverPrivateKey.x2, serverPrivateKey.x0Blinding, b,
+    b*serverPrivateKey.x1, b*serverPrivateKey.x2]
 
-  x0Var = prover.AppendScalar("x0", serverPrivateKey.x0)
-  x1Var = prover.AppendScalar("x1", serverPrivateKey.x1)
-  x2Var = prover.AppendScalar("x2", serverPrivateKey.x2)
-  x0BlindingVar = prover.AppendScalar("x0Blinding", serverPrivateKey.x0Blinding)
-  bVar = prover.AppendScalar("b", b)
-  t1Var = prover.AppendScalar("t1", b * serverPrivateKey.x1)
-  t2Var = prover.AppendScalar("t2", b * serverPrivateKey.x2)
-
-  genGVar = prover.AppendElement("genG", generatorG)
-  genHVar = prover.AppendElement("genH", generatorH)
-  m1EncVar = prover.AppendElement("m1Enc", request.m1Enc)
-  m2EncVar = prover.AppendElement("m2Enc", request.m2Enc)
-  UVar = prover.AppendElement("U", U)
-  encUPrimeVar = prover.AppendElement("encUPrime", encUPrime)
-  X0Var = prover.AppendElement("X0", serverPublicKey.X0)
-  X1Var = prover.AppendElement("X1", serverPublicKey.X1)
-  X2Var = prover.AppendElement("X2", serverPublicKey.X2)
-  X0AuxVar = prover.AppendElement("X0Aux", X0Aux)
-  X1AuxVar = prover.AppendElement("X1Aux", X1Aux)
-  X2AuxVar = prover.AppendElement("X2Aux", X2Aux)
-  HAuxVar = prover.AppendElement("HAux", HAux)
+  [genGVar, genHVar, m1EncVar, m2EncVar, UVar, encUPrimeVar, X0Var,
+    X1Var, X2Var, X0AuxVar, X1AuxVar, X2AuxVar, HAuxVar]
+    = statement.allocate_elements(13)
+  statement.set_elements([(genGVar, generatorG),
+    (genHVar, generatorH), (m1EncVar, request.m1Enc),
+    (m2EncVar, request.m2Enc), (UVar, U), (encUPrimeVar, encUPrime),
+    (X0Var, serverPublicKey.X0), (X1Var, serverPublicKey.X1),
+    (X2Var, serverPublicKey.X2), (X0AuxVar, X0Aux),
+    (X1AuxVar, X1Aux), (X2AuxVar, X2Aux), (HAuxVar, HAux)])
 
   # 1. X0 = x0 * generatorG + x0Blinding * generatorH
-  prover.Constrain(X0Var, [(x0Var, genGVar), (x0BlindingVar, genHVar)])
+  statement.append_equation(X0Var, [(x0Var, genGVar),
+    (x0BlindingVar, genHVar)])
   # 2. X1 = x1 * generatorH
-  prover.Constrain(X1Var, [(x1Var, genHVar)])
+  statement.append_equation(X1Var, [(x1Var, genHVar)])
   # 3. X2 = x2 * generatorH
-  prover.Constrain(X2Var, [(x2Var, genHVar)])
+  statement.append_equation(X2Var, [(x2Var, genHVar)])
 
   # 4. X0Aux = b * x0Blinding * generatorH
   # 4a. HAux = b * generatorH
-  prover.Constrain(HAuxVar, [(bVar, genHVar)])
+  statement.append_equation(HAuxVar, [(bVar, genHVar)])
   # 4b: X0Aux = x0Blinding * HAux (= b * x0Blinding * generatorH)
-  prover.Constrain(X0AuxVar, [(x0BlindingVar, HAuxVar)])
+  statement.append_equation(X0AuxVar, [(x0BlindingVar, HAuxVar)])
 
   # 5. X1Aux = b * x1 * generatorH
   # 5a. X1Aux = t1 * generatorH (t1 = b * x1)
-  prover.Constrain(X1AuxVar, [(t1Var, genHVar)])
+  statement.append_equation(X1AuxVar, [(t1Var, genHVar)])
   # 5b. X1Aux = b * X1 (X1 = x1 * generatorH)
-  prover.Constrain(X1AuxVar, [(bVar, X1Var)])
+  statement.append_equation(X1AuxVar, [(bVar, X1Var)])
 
   # 6. X2Aux = b * x2 * generatorH
   # 6a. X2Aux = b * X2 (X2 = x2 * generatorH)
-  prover.Constrain(X2AuxVar, [(bVar, X2Var)])
+  pstatement.append_equation(X2AuxVar, [(bVar, X2Var)])
   # 6b. X2Aux = t2 * H (t2 = b * x2)
-  prover.Constrain(X2AuxVar, [(t2Var, genHVar)])
+  statement.append_equation(X2AuxVar, [(t2Var, genHVar)])
 
   # 7. U = b * generatorG
-  prover.Constrain(UVar, [(bVar, genGVar)])
+  statement.append_equation(UVar, [(bVar, genGVar)])
   # 8. encUPrime = b * (X0 + x1 * Enc(m1) + x2 * Enc(m2))
-  # simplified: encUPrime = b * X0 + t1 * m1Enc + t2 * m2Enc, since t1 = b * x1 and t2 = b * x2
-  prover.Constrain(encUPrimeVar, [(bVar, X0Var), (t1Var, m1EncVar), (t2Var, m2EncVar)])
+  # simplified: encUPrime = b * X0 + t1 * m1Enc + t2 * m2Enc,
+  # since t1 = b * x1 and t2 = b * x2
+  statement.append_equation(encUPrimeVar, [(bVar, X0Var),
+    (t1Var, m1EncVar), (t2Var, m2EncVar)])
 
-  return prover.Prove()
+  session_id = contextString + "CredentialResponse"
+  prover = NISchnorrProofShake128P256(session_id, statement)
+  return prover.prove(witness, rng)
+~~~
+
+Where the response proof returned is a serialization of the following:
+~~~
+- challenge: Scalar, the challenge used in the proof of valid
+  response.
+- response0: Scalar, the response corresponding to x0.
+- response1: Scalar, the response corresponding to x1.
+- response2: Scalar, the response corresponding to x2.
+- response3: Scalar, the response corresponding to x0Blinding.
+- response4: Scalar, the response corresponding to b.
+- response5: Scalar, the response corresponding to t1.
+- response6: Scalar, the response corresponding to t2.
 ~~~
 
 ### CredentialResponse Proof Verification
 
 ~~~
-validity = VerifyCredentialResponseProof(serverPublicKey, response, request)
+validity = VerifyCredentialResponseProof(serverPublicKey, response,
+  request)
 
 Inputs:
 - serverPublicKey:
@@ -1224,22 +1019,17 @@ Inputs:
   - X1Aux: Element, auxiliary point for X1.
   - X2Aux: Element, auxiliary point for X2.
   - HAux: Element, auxiliary point for generatorH.
-  - responseProof: ZKProof, a proof of correct generation of U, encUPrime, server public keys, and auxiliary points.
-    - challenge: Scalar, the challenge used in the proof of valid response.
-    - response0: Scalar, the response corresponding to x0.
-    - response1: Scalar, the response corresponding to x1.
-    - response2: Scalar, the response corresponding to x2.
-    - response3: Scalar, the response corresponding to x0Blinding.
-    - response4: Scalar, the response corresponding to b.
-    - response5: Scalar, the response corresponding to t1.
-    - response6: Scalar, the response corresponding to t2.
+  - responseProof: String (ZKProof), a proof of correct generation of
+    U, encUPrime, server public keys, and auxiliary points.
 - request:
   - m1Enc: Element, first encrypted secret.
   - m2Enc: Element, second encrypted secret.
-  - requestProof: ZKProof, a proof of correct generation of m1Enc and m2Enc.
+  - requestProof: String (ZKProof), a proof of correct generation of
+    m1Enc and m2Enc.
 
 Outputs:
-- validity: Boolean, True if the proof verifies correctly, False otherwise.
+- validity: Boolean, True if the proof verifies correctly,
+  False otherwise.
 
 Parameters:
 - G: Group
@@ -1247,62 +1037,58 @@ Parameters:
 - generatorH: Element, equivalent to G.GeneratorH()
 
 def VerifyCredentialResponseProof(serverPublicKey, response, request):
-  verifier = Verifier(contextString + "CredentialResponse")
+  statement = LinearRelation(G)
+  [x0Var, x1Var, x2Var, x0BlindingVar, bVar, t1Var, t2Var]
+    = statement.allocate_scalars(7)
 
-  x0Var = verifier.AppendScalar("x0")
-  x1Var = verifier.AppendScalar("x1")
-  x2Var = verifier.AppendScalar("x2")
-  x0BlindingVar = verifier.AppendScalar("x0Blinding")
-  bVar = verifier.AppendScalar("b")
-  t1Var = verifier.AppendScalar("t1")
-  t2Var = verifier.AppendScalar("t2")
-
-  genGVar = verifier.AppendElement("genG", generatorG)
-  genHVar = verifier.AppendElement("genH", generatorH)
-  m1EncVar = verifier.AppendElement("m1Enc", request.m1Enc)
-  m2EncVar = verifier.AppendElement("m2Enc", request.m2Enc)
-  UVar = verifier.AppendElement("U", response.U)
-  encUPrimeVar = verifier.AppendElement("encUPrime", response.encUPrime)
-  X0Var = verifier.AppendElement("X0", serverPublicKey.X0)
-  X1Var = verifier.AppendElement("X1", serverPublicKey.X1)
-  X2Var = verifier.AppendElement("X2", serverPublicKey.X2)
-  X0AuxVar = verifier.AppendElement("X0Aux", response.X0Aux)
-  X1AuxVar = verifier.AppendElement("X1Aux", response.X1Aux)
-  X2AuxVar = verifier.AppendElement("X2Aux", response.X2Aux)
-  HAuxVar = verifier.AppendElement("HAux", response.HAux)
+  [genGVar, genHVar, m1EncVar, m2EncVar, UVar, encUPrimeVar, X0Var,
+    X1Var, X2Var, X0AuxVar, X1AuxVar, X2AuxVar, HAuxVar]
+    = statement.allocate_elements(13)
+  statement.set_elements([(genGVar, generatorG),
+    (genHVar, generatorH), (m1EncVar, request.m1Enc),
+    (m2EncVar, request.m2Enc), (UVar, response.U),
+    (encUPrimeVar, response.encUPrime), (X0Var, serverPublicKey.X0),
+    (X1Var, serverPublicKey.X1), (X2Var, serverPublicKey.X2),
+    (X0AuxVar, response.X0Aux), (X1AuxVar, response.X1Aux),
+    (X2AuxVar, response.X2Aux), (HAuxVar, response.HAux)])
 
   # 1. X0 = x0 * generatorG + x0Blinding * generatorH
-  verifier.Constrain(X0Var, [(x0Var, genGVar), (x0BlindingVar, genHVar)])
+  statement.append_equation(X0Var, [(x0Var, genGVar),
+    (x0BlindingVar, genHVar)])
   # 2. X1 = x1 * generatorH
-  verifier.Constrain(X1Var, [(x1Var, genHVar)])
+  statement.append_equation(X1Var, [(x1Var, genHVar)])
   # 3. X2 = x2 * generatorH
-  verifier.Constrain(X2Var, [(x2Var, genHVar)])
+  statement.append_equation(X2Var, [(x2Var, genHVar)])
 
   # 4. X0Aux = b * x0Blinding * generatorH
   # 4a. HAux = b * generatorH
-  verifier.Constrain(HAuxVar, [(bVar, genHVar)])
+  statement.append_equation(HAuxVar, [(bVar, genHVar)])
   # 4b: X0Aux = x0Blinding * HAux (= b * x0Blinding * generatorH)
-  verifier.Constrain(X0AuxVar, [(x0BlindingVar, HAuxVar)])
+  statement.append_equation(X0AuxVar, [(x0BlindingVar, HAuxVar)])
 
   # 5. X1Aux = b * x1 * generatorH
   # 5a. X1Aux = t1 * generatorH (t1 = b * x1)
-  verifier.Constrain(X1AuxVar, [(t1Var, genHVar)])
+  statement.append_equation(X1AuxVar, [(t1Var, genHVar)])
   # 5b. X1Aux = b * X1 (X1 = x1 * generatorH)
-  verifier.Constrain(X1AuxVar, [(bVar, X1Var)])
+  statement.append_equation(X1AuxVar, [(bVar, X1Var)])
 
   # 6. X2Aux = b * x2 * generatorH
   # 6a. X2Aux = b * X2 (X2 = x2 * generatorH)
-  verifier.Constrain(X2AuxVar, [(bVar, X2Var)])
+  pstatement.append_equation(X2AuxVar, [(bVar, X2Var)])
   # 6b. X2Aux = t2 * H (t2 = b * x2)
-  verifier.Constrain(X2AuxVar, [(t2Var, genHVar)])
+  statement.append_equation(X2AuxVar, [(t2Var, genHVar)])
 
   # 7. U = b * generatorG
-  verifier.Constrain(UVar, [(bVar, genGVar)])
+  statement.append_equation(UVar, [(bVar, genGVar)])
   # 8. encUPrime = b * (X0 + x1 * Enc(m1) + x2 * Enc(m2))
-  # simplified: encUPrime = b * X0 + t1 * m1Enc + t2 * m2Enc, since t1 = b * x1 and t2 = b * x2
-  verifier.Constrain(encUPrimeVar, [(bVar, X0Var), (t1Var, m1EncVar), (t2Var, m2EncVar)])
+  # simplified: encUPrime = b * X0 + t1 * m1Enc + t2 * m2Enc,
+  # since t1 = b * x1 and t2 = b * x2
+  statement.append_equation(encUPrimeVar, [(bVar, X0Var),
+    (t1Var, m1EncVar), (t2Var, m2EncVar)])
 
-  return verifier.Verify(response.responseProof)
+  session_id = contextString + "CredentialResponse"
+  verifier = NISchnorrProofShake128P256(session_id, statement)
+  return verifier.verify(response.responseProof)
 ~~~
 
 ## Presentation Proof {#presentation-proof}
@@ -1327,32 +1113,44 @@ Statements to prove:
 ### Presentation Proof Creation
 
 ~~~
-presentationProof = MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT, credential, V, r, z, nonce, nonceBlinding, nonceCommit, presentationLimit)
+presentationProof = MakePresentationProof(U, UPrimeCommit,
+  m1Commit, tag, generatorT, credential, V, r, z, nonce,
+  nonceBlinding, nonceCommit, presentationLimit, rng)
 
 Inputs:
 - U: Element, re-randomized from the U in the response.
 - UPrimeCommit: Element, a public key to the MACGGM output UPrime.
 - m1Commit: Element, a public key to the client secret (m1).
-- tag: Element, the tag element used for enforcing the presentation limit.
+- tag: Element, the tag element used for enforcing the presentation
+  limit.
 - generatorT: Element, used for presentation tag computation.
 - credential:
   - m1: Scalar, client's first secret.
   - U: Element, a randomized generator for the response. `b*G`.
-  - UPrime: Element, the MAC over the server's private keys and the client's secrets.
+  - UPrime: Element, the MAC over the server's private keys and the
+    client's secrets.
   - X1: Element, server public key 1.
 - V: Element, a proof helper element.
-- r: Scalar (private), a randomly generated element used in presentation.
-- z: Scalar (private), a randomly generated element used in presentation.
+- r: Scalar (private), a randomly generated element used in
+  presentation.
+- z: Scalar (private), a randomly generated element used in
+  presentation.
 - nonce: Int, the nonce associated with the presentation.
 - nonceBlinding: Scalar (private), the blinding factor for the nonce commitment.
 - nonceCommit: Element, the Pedersen commitment to the nonce.
 - presentationLimit: Integer, the fixed presentation limit.
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocol spec {{SIGMA}}.
 
 Outputs:
-- presentationProof: ZKProof, a joint proof covering both presentation and range proof
-  - D: [Element], array of commitments to the bit decomposition of the nonce
-  - challenge: Scalar, the challenge used in the proof of valid presentation.
-  - response: [Scalar], an array of scalars for all variables (presentation + range proof)
+- presentationProof: ZKProof, a joint proof covering both
+  presentation and range proof
+  - D: [Element], array of commitments to the bit decomposition of
+    the nonce
+  - challenge: Scalar, the challenge used in the proof of valid
+    presentation.
+  - response: [Scalar], an array of scalars for all variables
+    (presentation + range proof)
 
 Parameters:
 - G: Group
@@ -1360,53 +1158,62 @@ Parameters:
 - generatorH: Element, equivalent to G.GeneratorH()
 - contextString: public input
 
-def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT, credential, V, r, z, nonce, nonceBlinding, nonceCommit, presentationLimit):
-  prover = Prover(contextString + "CredentialPresentation")
+def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
+  credential, V, r, z, nonce, nonceBlinding, nonceCommit,
+  presentationLimit, rng):
+  statement = LinearRelation(G)
+  [m1Var, zVar, rNegVar, nonceVar, nonceBlindingVar] = statement.allocate_scalars(5)
 
-  m1Var = prover.AppendScalar("m1", credential.m1)
-  zVar = prover.AppendScalar("z", z)
-  rNegVar = prover.AppendScalar("-r", -r)
-  nonceVar = prover.AppendScalar("nonce", nonce)
-  nonceBlindingVar = prover.AppendScalar("nonceBlinding", nonceBlinding)
-
-  genGVar = prover.AppendElement("genG", generatorG)
-  genHVar = prover.AppendElement("genH", generatorH)
-  UVar = prover.AppendElement("U", U)
-  _ = prover.AppendElement("UPrimeCommit", UPrimeCommit)
-  m1CommitVar = prover.AppendElement("m1Commit", m1Commit)
-  VVar = prover.AppendElement("V", V)
-  X1Var = prover.AppendElement("X1", credential.X1)
-  tagVar = prover.AppendElement("tag", tag)
-  genTVar = prover.AppendElement("genT", generatorT)
-  nonceCommitVar = prover.AppendElement("nonceCommit", nonceCommit)
+  [genGVar, genHVar, UVar, UPrimeCommitVar, m1CommitVar, VVar, X1Var,
+    tagVar, genTVar, nonceCommitVar] = statement.allocate_elements(10)
+  statement.set_elements([(genGVar, generatorG),
+    (genHVar, generatorH), (UVar, U),
+    (UPrimeCommitVar, UPrimeCommit), (m1CommitVar, m1Commit),
+    (VVar, V), (X1Var, credential.X1), (tagVar, tag),
+    (genTVar, generatorT), (nonceCommitVar, nonceCommit)])
 
   # 1. m1Commit = m1 * U + z * generatorH
-  prover.Constrain(m1CommitVar, [(m1Var, UVar), (zVar, genHVar)])
+  statement.append_equation(m1CommitVar,
+    [(m1Var, UVar),(zVar, genHVar)])
   # 2. V = z * X1 - r * generatorG
-  prover.Constrain(VVar, [(zVar, X1Var), (rNegVar, genGVar)])
+  statement.append_equation(VVar, [(zVar, X1Var), (rNegVar, genGVar)])
   # 3. nonceCommit = nonce * generatorG + nonceBlinding * generatorH
-  prover.Constrain(nonceCommitVar, [(nonceVar, genGVar), (nonceBlindingVar, genHVar)])
-  # 4. T = m1 * tag + nonce * tag, where T = G.HashToGroup(presentationContext, "Tag")
-  prover.Constrain(genTVar, [(m1Var, tagVar), (nonceVar, tagVar)])
+  statement.append_equation(nonceCommitVar,
+    [(nonceVar, genGVar), (nonceBlindingVar, genHVar)])
+  # 4. T = m1 * tag + nonce * tag, where
+  #    T = G.HashToGroup(presentationContext, "Tag")
+  statement.append_equation(genTVar,
+    [(m1Var, tagVar), (nonceVar, tagVar)])
   # 5. Add range proof constraints
-  (prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
-                                     genGVar, genHVar)
+  (statement, D) = MakeRangeProofHelper(statement, nonce,
+    nonceBlinding, presentationLimit, genGVar, genHVar)
 
-  # Generate the joint proof
-  presentationProof = prover.Prove()
-  return (presentationProof, D)
+  # Build witness vector matching the scalar allocations
+  witness = [credential.m1, z, -r, nonce, nonceBlinding]
+  # Add range proof witnesses (b[i], s[i], s2[i] for each bit)
+  # These are added by MakeRangeProofHelper
+
+  session_id = contextString + "CredentialPresentation"
+  prover = NISchnorrProofShake128P256(session_id, statement)
+  return (prover.prove(witness, rng), D)
+~~~
+
+Where the presentation proof returned is a serialization of the following:
+~~~
+- challenge: Scalar, the challenge used in the proof of valid
+  presentation.
+- response0: Scalar, the response corresponding to m1.
+- response1: Scalar, the response corresponding to z.
+- response2: Scalar, the response corresponding to -r.
+- response3: Scalar, the response corresponding to nonce.
 ~~~
 
 ### Presentation Proof Verification
 
 ~~~
-validity = VerifyPresentationProof(
-  serverPrivateKey,
-  serverPublicKey,
-  requestContext,
-  presentationContext,
-  presentation,
-  presentationLimit)
+validity = VerifyPresentationProof(serverPrivateKey,
+  serverPublicKey, requestContext, presentationContext,
+  presentation, presentationLimit)
 
 Inputs:
 - serverPrivateKey:
@@ -1419,21 +1226,28 @@ Inputs:
   - X1: Element, server public key 1.
   - X2: Element, server public key 2.
 - requestContext: Data, context for the credential request.
-- presentationContext: Data (public), used for presentation tag computation.
+- presentationContext: Data (public), used for presentation tag
+  computation.
 - presentation:
   - U: Element, re-randomized from the U in the response.
   - UPrimeCommit: Element, a public key to the issued UPrime.
   - m1Commit: Element, a public key to the client secret (m1).
-  - tag: Element, the tag element used for enforcing the presentation limit.
+  - tag: Element, the tag element used for enforcing the
+    presentation limit.
   - nonceCommit: Element, a Pedersen commitment to the nonce.
-  - D: [Element], array of commitments to the bit decomposition of nonceCommit
-  - presentationProof: ZKProof, a joint proof covering both presentation and range proof
-    - challenge: Scalar, the challenge used in the proof of valid presentation.
-    - response: [Scalar], an array of scalars for all variables (presentation + range proof)
+  - D: [Element], array of commitments to the bit decomposition of
+    nonceCommit
+  - presentationProof: ZKProof, a joint proof covering both
+    presentation and range proof
+    - challenge: Scalar, the challenge used in the proof of valid
+      presentation.
+    - response: [Scalar], an array of scalars for all variables
+      (presentation + range proof)
 - presentationLimit: Integer, the fixed presentation limit.
 
 Outputs:
-- validity: Boolean, True if the proof verifies correctly, False otherwise.
+- validity: Boolean, True if the proof verifies correctly,
+  False otherwise.
 
 Parameters:
 - G: Group
@@ -1441,51 +1255,53 @@ Parameters:
 - generatorH: Element, equivalent to G.GeneratorH()
 - contextString: public input
 
-def VerifyPresentationProof(
-  serverPrivateKey,
-  serverPublicKey,
-  requestContext,
-  presentationContext,
-  presentation,
+def VerifyPresentationProof(serverPrivateKey, serverPublicKey,
+  requestContext, presentationContext, presentation,
   presentationLimit):
 
   m2 = G.HashToScalar(requestContext, "requestContext")
-  V = serverPrivateKey.x0 * presentation.U + serverPrivateKey.x1 * presentation.m1Commit + serverPrivateKey.x2 * m2 * presentation.U - presentation.UPrimeCommit
+  V = serverPrivateKey.x0 * presentation.U + serverPrivateKey.x1 *
+    presentation.m1Commit + serverPrivateKey.x2 * m2 *
+    presentation.U - presentation.UPrimeCommit
   generatorT = G.HashToGroup(presentationContext, "Tag")
 
-  verifier = Verifier(contextString + "CredentialPresentation")
+  statement = LinearRelation(G)
+  [m1Var, zVar, rNegVar, nonceVar, nonceBlindingVar] =
+    statement.allocate_scalars(5)
 
-  m1Var = verifier.AppendScalar("m1")
-  zVar = verifier.AppendScalar("z")
-  rNegVar = verifier.AppendScalar("-r")
-  nonceVar = verifier.AppendScalar("nonce")
-  nonceBlindingVar = verifier.AppendScalar("nonceBlinding")
-
-  genGVar = verifier.AppendElement("genG", generatorG)
-  genHVar = verifier.AppendElement("genH", generatorH)
-  UVar = verifier.AppendElement("U", presentation.U)
-  _ = verifier.AppendElement("UPrimeCommit", presentation.UPrimeCommit)
-  m1CommitVar = verifier.AppendElement("m1Commit", presentation.m1Commit)
-  VVar = verifier.AppendElement("V", V)
-  X1Var = verifier.AppendElement("X1", serverPublicKey.X1)
-  tagVar = verifier.AppendElement("tag", presentation.tag)
-  genTVar = verifier.AppendElement("genT", generatorT)
-  nonceCommitVar = verifier.AppendElement("nonceCommit", presentation.nonceCommit)
+  [genGVar, genHVar, UVar, UPrimeCommitVar, m1CommitVar, VVar, X1Var,
+    tagVar, genTVar, nonceCommitVar] = statement.allocate_elements(10)
+  statement.set_elements([(genGVar, generatorG),
+    (genHVar, generatorH), (UVar, presentation.U),
+    (UPrimeCommitVar, presentation.UPrimeCommit),
+    (m1CommitVar, presentation.m1Commit), (VVar, V),
+    (X1Var, serverPublicKey.X1), (tagVar, presentation.tag),
+    (genTVar, generatorT), (nonceCommitVar, presentation.nonceCommit)])
 
   # 1. m1Commit = m1 * U + z * generatorH
-  verifier.Constrain(m1CommitVar, [(m1Var, UVar), (zVar, genHVar)])
+  statement.append_equation(m1CommitVar,
+    [(m1Var, UVar),(zVar, genHVar)])
   # 2. V = z * X1 - r * generatorG
-  verifier.Constrain(VVar, [(zVar, X1Var), (rNegVar, genGVar)])
+  statement.append_equation(VVar,
+    [(zVar, X1Var), (rNegVar, genGVar)])
   # 3. nonceCommit = nonce * generatorG + nonceBlinding * generatorH
-  verifier.Constrain(nonceCommitVar, [(nonceVar, genGVar), (nonceBlindingVar, genHVar)])
-  # 4. G.HashToGroup(presentationContext, "Tag") = m1 * tag + nonce * tag
-  verifier.Constrain(genTVar, [(m1Var, tagVar), (nonceVar, tagVar)])
-  # 5. Add range proof constraints and verify the sum of the nonceCommit bit commitments
-  (verifier, sumValid) = VerifyRangeProofHelper(verifier, presentation.D, presentation.nonceCommit,
-                                                presentationLimit, genGVar, genHVar)
+  statement.append_equation(nonceCommitVar,
+    [(nonceVar, genGVar), (nonceBlindingVar, genHVar)])
+  # 4. G.HashToGroup(presentationContext, "Tag")
+  #    = m1 * tag + nonce * tag
+  statement.append_equation(genTVar,
+    [(m1Var, tagVar), (nonceVar, tagVar)])
+  # 5. Add range proof constraints and verify the sum of the
+  #    nonceCommit bit commitments
+  (statement, sumValid) = VerifyRangeProofHelper(statement,
+    presentation.proof.D, presentation.nonceCommit,
+    presentationLimit, genGVar, genHVar)
 
   # Verify the joint proof
-  proofValid = sumValid and verifier.Verify(presentation.presentationProof)
+  session_id = contextString + "CredentialPresentation"
+  verifier = NISchnorrProofShake128P256(session_id, statement)
+  proofValid = sumValid and verifier.verify(
+    presentation.presentationProof)
   return proofValid
 ~~~
 
@@ -1586,7 +1402,7 @@ Parameters:
 - generatorG: Element, equivalent to G.GeneratorG()
 - generatorH: Element, equivalent to G.GeneratorH()
 
-def MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
+def MakeRangeProofHelper(statement, nonce, nonceBlinding, presentationLimit,
                          genGVar, genHVar):
 
   # Compute bit decomposition and commitments
@@ -1618,26 +1434,24 @@ def MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
   s2.append((G.Scalar(1) - b[idx]) * s[idx])
   D.append(b[idx] * generatorG + s[idx] * generatorH)
 
-  vars_b = []
-  vars_s = []
-  vars_s2 = []
-  vars_D = []
-  for i in range(len(b)):
-    # Append scalar variables with witness values
-    vars_b.append(prover.AppendScalar("b" + str(i), b[i]))
-    vars_s.append(prover.AppendScalar("s" + str(i), s[i]))
-    vars_s2.append(prover.AppendScalar("s2" + str(i), s2[i]))
-    # Append element variables for bit commitments D
-    vars_D.append(prover.AppendElement("D" + str(i), D[i]))
+  # Allocate scalar variables (b, s, s2 for each bit)
+  num_bits = len(b)
+  vars_b = statement.allocate_scalars(num_bits)
+  vars_s = statement.allocate_scalars(num_bits)
+  vars_s2 = statement.allocate_scalars(num_bits)
+
+  # Allocate and set element variables for bit commitments D
+  vars_D = statement.allocate_elements(num_bits)
+  statement.set_elements([(vars_D[i], D[i]) for i in range(num_bits)])
 
   # Add constraints proving each b[i] is in {0,1}
   for i in range(len(b)):
     # D[i] = b[i] * generatorG + s[i] * generatorH
-    prover.Constrain(vars_D[i], [(vars_b[i], genGVar), (vars_s[i], genHVar)])
+    statement.append_equation(vars_D[i], [(vars_b[i], genGVar), (vars_s[i], genHVar)])
     # D[i] = b[i] * D[i] + s2[i] * generatorH (proves b[i] is in {0,1})
-    prover.Constrain(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], genHVar)])
+    statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], genHVar)])
 
-  return (prover, D)
+  return (statement, D)
 ~~~
 
 ### Range Proof Verification
@@ -1663,30 +1477,27 @@ Parameters:
 - generatorG: Element, equivalent to G.GeneratorG()
 - generatorH: Element, equivalent to G.GeneratorH()
 
-def VerifyRangeProofHelper(verifier, D, nonceCommit, presentationLimit,
+def VerifyRangeProofHelper(statement, D, nonceCommit, presentationLimit,
                            genGVar, genHVar):
 
   bases = ComputeBases(presentationLimit)
   num_bits = len(bases)
 
-  vars_b = []
-  vars_s = []
-  vars_s2 = []
-  vars_D = []
-  for i in range(num_bits):
-    # Append scalar variables without witness values
-    vars_b.append(verifier.AppendScalar("b" + str(i)))
-    vars_s.append(verifier.AppendScalar("s" + str(i)))
-    vars_s2.append(verifier.AppendScalar("s2" + str(i)))
-    # Append element variables for bit commitments D
-    vars_D.append(verifier.AppendElement("D" + str(i), D[i]))
+  # Allocate scalar variables (b, s, s2 for each bit)
+  vars_b = statement.allocate_scalars(num_bits)
+  vars_s = statement.allocate_scalars(num_bits)
+  vars_s2 = statement.allocate_scalars(num_bits)
+
+  # Allocate and set element variables for bit commitments D
+  vars_D = statement.allocate_elements(num_bits)
+  statement.set_elements([(vars_D[i], D[i]) for i in range(num_bits)])
 
   # Add constraints proving each b[i] is in {0,1}
   for i in range(num_bits):
     # D[i] = b[i] * generatorG + s[i] * generatorH
-    verifier.Constrain(vars_D[i], [(vars_b[i], genGVar), (vars_s[i], genHVar)])
+    statement.append_equation(vars_D[i], [(vars_b[i], genGVar), (vars_s[i], genHVar)])
     # D[i] = b[i] * D[i] + s2[i] * generatorH
-    verifier.Constrain(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], genHVar)])
+    statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], genHVar)])
 
   # Verify the sum check: nonceCommit == sum(bases[i] * D[i])
   # This is done explicitly by computing the sum homomorphically
@@ -1695,7 +1506,7 @@ def VerifyRangeProofHelper(verifier, D, nonceCommit, presentationLimit,
     sum_D = sum_D + bases[i] * D[i]
 
   sumValid = (sum_D == nonceCommit)
-  return (verifier, sumValid)
+  return (statement, sumValid)
 ~~~
 
 # Ciphersuites {#ciphersuites}
@@ -1753,7 +1564,7 @@ contextString is "ARCV1-P256".
     according to {{SEC1}}; Ns = 32.
   - DeserializeScalar(buf): Implemented by attempting to deserialize a Scalar from a 32-byte
     string using Octet-String-to-Field-Element from {{SEC1}}. This function can fail if the
-    input does not represent a Scalar in the range \[0, `G.Order()` - 1\].
+    input does not represent a Scalar in the range \[1, `G.Order()` - 1\].
 
 ## Random Scalar Generation {#random-scalar}
 
