@@ -70,7 +70,7 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
         partial_sum += bases[i] * s_i
         s2_i = (Integer(1) - b[i]) * s_i
         s2.append(s2_i)
-        D_i = b[i] * GenG + s_i * GenH
+        D_i = G.scalar_mult(G.ScalarField.field(b[i]), GenG) + G.scalar_mult(G.ScalarField.field(s_i), GenH)
         D.append(D_i)
 
     # Blinding value for the last bit commitment is chosen strategically
@@ -80,7 +80,7 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
     s.append(s_last)
     s2_last = (Integer(1) - b[idx]) * s_last
     s2.append(s2_last)
-    D_last = b[idx] * GenG + s_last * GenH
+    D_last = G.scalar_mult(G.ScalarField.field(b[idx]), GenG) + G.scalar_mult(G.ScalarField.field(s_last), GenH)
     D.append(D_last)
 
     # Allocate scalar variables (3 per bit: b, s, s2)

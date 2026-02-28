@@ -26,13 +26,13 @@ class Credential(object):
         self.U = U
         self.U_prime = U_prime
         self.X1 = X1
-    
+
 class PresentationState(object):
     def __init__(self, credential, presentation_context, presentation_limit):
         self.credential = credential
         self.presentation_context = presentation_context
         self.presentation_limit = presentation_limit
-        self.next_nonce = 0
+        self.next_nonce = G.ScalarField.field(0)
 
     def present(self, rng, vectors):
         if self.next_nonce >= self.presentation_limit:
@@ -46,18 +46,18 @@ class PresentationState(object):
         r = rng.random_scalar()
         z = rng.random_scalar()
 
-        U = a * self.credential.U
-        U_prime = a * self.credential.U_prime
-        U_prime_commit = U_prime + r * GenG
-        m1_commit = self.credential.m1 * U + z * GenH
+        U = G.scalar_mult(a, self.credential.U)
+        U_prime = G.scalar_mult(a, self.credential.U_prime)
+        U_prime_commit = U_prime + G.scalar_mult(r, GenG)
+        m1_commit = G.scalar_mult(self.credential.m1, U) + G.scalar_mult(z, GenH)
 
         # Create Pedersen commitment to the nonce
         nonce_blinding = rng.random_scalar()
-        nonce_commit = nonce * GenG + nonce_blinding * GenH
+        nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
         generator_T = hash_to_group(self.presentation_context, to_bytes("Tag"))
-        tag = inverse_mod(Integer(self.credential.m1) + Integer(nonce), Integer(G.group_order)) * generator_T
-        V = (z * self.credential.X1) - (r * GenG)
+        tag = G.scalar_mult(1/(self.credential.m1 + nonce), generator_T)
+        V = G.scalar_mult(z, self.credential.X1) - G.scalar_mult(r, GenG)
 
         proof = PresentationProof.prove(U, U_prime_commit, m1_commit, tag, generator_T, self.credential, V, r, z, nonce, nonce_blinding, nonce_commit, self.presentation_limit, rng, vectors)
         presentation = Presentation(U, U_prime_commit, m1_commit, tag, nonce_commit, proof)
@@ -97,7 +97,7 @@ class CredentialRequestContext(object):
         if CredentialResponseProof.verify(server_public_key, blinded_response, self.request) == False:
             raise Exception("verify_issuance_proof failed")
 
-        U_prime = blinded_response.enc_U_prime - blinded_response.X0_aux - self.client_secrets.r1 * blinded_response.X1_aux - self.client_secrets.r2 * blinded_response.X2_aux
+        U_prime = blinded_response.enc_U_prime - blinded_response.X0_aux - G.scalar_mult(self.client_secrets.r1, blinded_response.X1_aux) - G.scalar_mult(self.client_secrets.r2, blinded_response.X2_aux)
 
         vectors["m1"] = to_hex(G.ScalarField.serialize([self.client_secrets.m1]))
         vectors["U"] = to_hex(G.serialize([blinded_response.U]))
@@ -118,7 +118,7 @@ class ClientPrivateKey(object):
     def __init__(self, rng, private_info):
         self.sk = rng.random_scalar()
         self.private_attr = hash_to_scalar(private_info, to_bytes("private"))
-        self.pk = self.sk * GenG
+        self.pk = G.scalar_mult(self.sk, GenG)
 
     def serialize(self):
         return G.ScalarField.serialize([self.sk]) + G.ScalarField.serialize([self.private_attr])
@@ -129,16 +129,16 @@ class Client(object):
 
     def request(self, request_context, vectors):
         m1 = self.rng.random_scalar()
-        m2 = hash_to_scalar(request_context, to_bytes("requestContext"))
+        m2 = G.ScalarField.field(hash_to_scalar(request_context, to_bytes("requestContext")))
         r1 = self.rng.random_scalar()
         r2 = self.rng.random_scalar()
 
-        m1_enc = m1 * GenG + r1 * GenH
-        m2_enc = m2 * GenG + r2 * GenH
+        m1_enc = G.scalar_mult(m1, GenG) + G.scalar_mult(r1, GenH)
+        m2_enc = G.scalar_mult(m2, GenG) + G.scalar_mult(r2, GenH)
 
         proof = CredentialRequestProof.prove(m1, m2, r1, r2, m1_enc, m2_enc, self.rng, vectors)
         blinded_request = BlindedRequest(m1_enc, m2_enc, proof)
-        
+
         client_secrets = ClientSecrets(m1, m2, r1, r2)
 
         context = CredentialRequestContext(client_secrets, blinded_request)
@@ -174,9 +174,9 @@ class Server(object):
         x1 = rng.random_scalar()
         x2 = rng.random_scalar()
         xb = rng.random_scalar()
-        X0 = (x0 * GenG) + (xb * GenH)
-        X1 = (x1 * GenH)
-        X2 = (x2 * GenH)
+        X0 = G.scalar_mult(x0, GenG) + G.scalar_mult(xb, GenH)
+        X1 = G.scalar_mult(x1, GenH)
+        X2 = G.scalar_mult(x2, GenH)
 
         vectors["x0"] = to_hex(G.ScalarField.serialize([x0]))
         vectors["x1"] = to_hex(G.ScalarField.serialize([x1]))
@@ -194,15 +194,15 @@ class Server(object):
     def issue(self, private_key, public_key, blinded_request, rng, vectors):
         if CredentialRequestProof.verify(blinded_request) == False:
             raise Exception("request proof verification failed")
-        
-        b = rng.random_scalar()
-        U = b * GenG
 
-        enc_U_prime = b * (public_key.X0 + private_key.x1 * blinded_request.m1_enc + private_key.x2 * blinded_request.m2_enc)
-        X0_aux = b * private_key.xb * GenH
-        X1_aux = b * public_key.X1
-        X2_aux = b * public_key.X2
-        H_aux = b * GenH
+        b = rng.random_scalar()
+        U = G.scalar_mult(b, GenG)
+
+        enc_U_prime = G.scalar_mult(b, (public_key.X0 + G.scalar_mult(private_key.x1, blinded_request.m1_enc) + G.scalar_mult(private_key.x2, blinded_request.m2_enc)))
+        X0_aux = G.scalar_mult(b * private_key.xb, GenH)
+        X1_aux = G.scalar_mult(b, public_key.X1)
+        X2_aux = G.scalar_mult(b, public_key.X2)
+        H_aux =  G.scalar_mult(b, GenH)
 
         response_proof = CredentialResponseProof.prove(private_key, public_key, blinded_request, b, U, enc_U_prime, X0_aux, X1_aux, X2_aux, H_aux, rng, vectors)
         response = BlindedResponse(U, enc_U_prime, X0_aux, X1_aux, X2_aux, H_aux, response_proof)
@@ -217,7 +217,7 @@ class Server(object):
         vectors["proof"] = to_hex(response_proof)
 
         return response
-    
+
     def verify_presentation(self, private_key, public_key, request_context, presentation_context, presentation, presentation_limit):
         generator_T = hash_to_group(presentation_context, to_bytes("Tag"))
         validity = PresentationProof.verify(private_key, public_key, request_context, presentation_context, presentation, presentation_limit)

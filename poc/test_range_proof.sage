@@ -23,11 +23,11 @@ def test_valid_nonce_in_range():
 
     # Test several valid nonces
     test_nonces = [0, 1, 5, 9]  # All in [0, 10)
-
     for nonce in test_nonces:
         # Generate blinding factor and commitment
         nonce_blinding = rng.random_scalar()
-        nonce_commit = nonce * GenG + nonce_blinding * GenH
+        nonce = G.ScalarField.field(nonce)
+        nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding,GenH)
 
         # Create prover statement
         statement = LinearRelation(G)
@@ -105,7 +105,8 @@ def test_nonce_equals_limit():
     try:
         # Generate blinding factor and commitment
         nonce_blinding = rng.random_scalar()
-        nonce_commit = nonce * GenG + nonce_blinding * GenH
+        nonce = G.ScalarField.field(nonce)
+        nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
         # Create prover statement
         statement = LinearRelation(G)
@@ -176,7 +177,8 @@ def test_nonce_exceeds_limit():
     try:
         # Generate blinding factor and commitment
         nonce_blinding = rng.random_scalar()
-        nonce_commit = nonce * GenG + nonce_blinding * GenH
+        nonce = G.ScalarField.field(nonce)
+        nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
         # Create prover statement
         statement = LinearRelation(G)
@@ -253,7 +255,8 @@ def test_negative_nonce():
         nonce_blinding = rng.random_scalar()
         # This will compute (-1) * GenG + nonce_blinding * GenH
         # which is equivalent to (order - 1) * GenG + nonce_blinding * GenH
-        nonce_commit = nonce * GenG + nonce_blinding * GenH
+        nonce = G.ScalarField.field(nonce)
+        nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
         # Create prover statement
         statement = LinearRelation(G)
@@ -323,7 +326,8 @@ def test_tampered_bit_commitments():
 
     # Generate blinding factor and commitment
     nonce_blinding = rng.random_scalar()
-    nonce_commit = nonce * GenG + nonce_blinding * GenH
+    nonce = G.ScalarField.field(nonce)
+    nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
     # Create prover statement
     statement = LinearRelation(G)
@@ -354,7 +358,7 @@ def test_tampered_bit_commitments():
     if len(D) > 0:
         tampered_D = list(D)
         random_scalar = rng.random_scalar()
-        tampered_D[0] = random_scalar * GenG  # Replace first commitment with random value
+        tampered_D[0] = G.scalar_mult(random_scalar, GenG)  # Replace first commitment with random value
 
         # Create verifier statement
         verifier_statement = LinearRelation(G)
@@ -398,7 +402,8 @@ def test_wrong_sum():
 
     # Generate blinding factor and commitment
     nonce_blinding = rng.random_scalar()
-    nonce_commit = nonce * GenG + nonce_blinding * GenH
+    nonce = G.ScalarField.field(nonce)
+    nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
     # Create prover statement
     statement = LinearRelation(G)
@@ -426,9 +431,9 @@ def test_wrong_sum():
     proof = prover.prove(witness, csrng)
 
     # Create a different nonce commitment (for nonce 7 instead of 5)
-    different_nonce = 7
+    different_nonce = G.ScalarField.field(7)
     different_nonce_blinding = rng.random_scalar()
-    wrong_nonce_commit = different_nonce * GenG + different_nonce_blinding * GenH
+    wrong_nonce_commit = G.scalar_mult(different_nonce, GenG) + G.scalar_mult(different_nonce_blinding, GenH)
 
     # Create verifier statement
     verifier_statement = LinearRelation(G)
