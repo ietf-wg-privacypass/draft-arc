@@ -47,19 +47,19 @@ def test_nonce_exceeds_limit():
         r = rng.random_scalar()
         z = rng.random_scalar()
 
-        U = a * credential.U
-        U_prime = a * credential.U_prime
-        U_prime_commit = U_prime + r * GenG
-        m1_commit = credential.m1 * U + z * GenH
+        U = G.scalar_mult(a, credential.U)
+        U_prime = G.scalar_mult(a, credential.U_prime)
+        U_prime_commit = U_prime + G.scalar_mult(r, GenG)
+        m1_commit = G.scalar_mult(credential.m1, U) + G.scalar_mult(z, GenH)
 
         # Use nonce at the limit
-        bad_nonce = presentation_limit
+        bad_nonce = G.ScalarField.field(presentation_limit)
         nonce_blinding = rng.random_scalar()
-        nonce_commit = bad_nonce * GenG + nonce_blinding * GenH
+        nonce_commit = G.scalar_mult(bad_nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
         generator_T = hash_to_group(presentation_context, to_bytes("Tag"))
-        tag = inverse_mod(Integer(credential.m1 + bad_nonce), Integer(G.group_order)) * generator_T
-        V = (z * credential.X1) - (r * GenG)
+        tag = G.scalar_mult(1/(credential.m1 + bad_nonce), generator_T)
+        V = G.scalar_mult(z, credential.X1) - G.scalar_mult(r, GenG)
 
         # Try to create proof with bad nonce
         proof = PresentationProof.prove(U, U_prime_commit, m1_commit, tag, generator_T,
@@ -110,7 +110,7 @@ def test_invalid_bit_decomposition():
     if len(tampered_D) > 0:
         # Create a random element by multiplying generator by random scalar
         random_scalar = rng.random_scalar()
-        tampered_D[0] = random_scalar * GenG  # Replace with random element
+        tampered_D[0] = G.scalar_mult(random_scalar, GenG)  # Replace with random element
 
         # Create tampered proof with modified D
         tampered_proof = PresentationProof(
@@ -166,7 +166,7 @@ def test_invalid_nonce_commitment():
 
     # Replace nonce_commit with a random commitment
     random_scalar = rng.random_scalar()
-    bad_nonce_commit = random_scalar * GenG
+    bad_nonce_commit = G.scalar_mult(random_scalar, GenG)
 
     tampered_presentation = Presentation(
         valid_presentation.U,
@@ -207,32 +207,32 @@ def test_reused_nonce_detection():
     presentation_limit = 5
 
     # Manually create two presentations with the same nonce
-    nonce = 1
+    nonce = G.ScalarField.field(1)
 
     # First presentation
     a1 = rng.random_scalar()
     r1 = rng.random_scalar()
     z1 = rng.random_scalar()
-    U1 = a1 * credential.U
-    U_prime1 = a1 * credential.U_prime
-    U_prime_commit1 = U_prime1 + r1 * GenG
-    m1_commit1 = credential.m1 * U1 + z1 * GenH
+    U1 = G.scalar_mult(a1, credential.U)
+    U_prime1 = G.scalar_mult(a1, credential.U_prime)
+    U_prime_commit1 = U_prime1 + G.scalar_mult(r1, GenG)
+    m1_commit1 = G.scalar_mult(credential.m1, U1) + G.scalar_mult(z1, GenH)
     nonce_blinding1 = rng.random_scalar()
-    nonce_commit1 = nonce * GenG + nonce_blinding1 * GenH
+    nonce_commit1 = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding1, GenH)
     generator_T = hash_to_group(presentation_context, to_bytes("Tag"))
-    tag1 = inverse_mod(Integer(credential.m1 + nonce), Integer(G.group_order)) * generator_T
+    tag1 = G.scalar_mult(1/(credential.m1 + nonce), generator_T)
 
     # Second presentation with same nonce
     a2 = rng.random_scalar()
     r2 = rng.random_scalar()
     z2 = rng.random_scalar()
-    U2 = a2 * credential.U
-    U_prime2 = a2 * credential.U_prime
-    U_prime_commit2 = U_prime2 + r2 * GenG
-    m1_commit2 = credential.m1 * U2 + z2 * GenH
+    U2 = G.scalar_mult(a2, credential.U)
+    U_prime2 = G.scalar_mult(a2, credential.U_prime)
+    U_prime_commit2 = U_prime2 + G.scalar_mult(r2, GenG)
+    m1_commit2 = G.scalar_mult(credential.m1, U2) + G.scalar_mult(z2, GenH)
     nonce_blinding2 = rng.random_scalar()
-    nonce_commit2 = nonce * GenG + nonce_blinding2 * GenH
-    tag2 = inverse_mod(Integer(credential.m1 + nonce), Integer(G.group_order)) * generator_T
+    nonce_commit2 = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding2, GenH)
+    tag2 = G.scalar_mult(1/(credential.m1 + nonce), generator_T)
 
     # Tags should be identical for the same nonce
     if tag1 == tag2:
@@ -313,7 +313,7 @@ def test_tampered_presentation():
     total_tests += 1
     random_scalar = rng.random_scalar()
     tampered_U = Presentation(
-        random_scalar * GenG,  # Replace with random element
+        G.scalar_mult(random_scalar, GenG),  # Replace with random element
         valid_presentation.U_prime_commit,
         valid_presentation.m1_commit,
         valid_presentation.tag,
@@ -334,7 +334,7 @@ def test_tampered_presentation():
     tampered_m1 = Presentation(
         valid_presentation.U,
         valid_presentation.U_prime_commit,
-        random_scalar * GenG,  # Replace with random element
+        G.scalar_mult(random_scalar, GenG),  # Replace with random element
         valid_presentation.tag,
         valid_presentation.nonce_commit,
         valid_presentation.proof
@@ -354,7 +354,7 @@ def test_tampered_presentation():
         valid_presentation.U,
         valid_presentation.U_prime_commit,
         valid_presentation.m1_commit,
-        random_scalar * GenG,  # Replace with random element
+        G.scalar_mult(random_scalar, GenG),  # Replace with random element
         valid_presentation.nonce_commit,
         valid_presentation.proof
     )
