@@ -3,4 +3,4 @@
 	url = git@github.com:cfrg/draft-irtf-cfrg-hash-to-curve.git
 [submodule "sigma"]
 	path = poc/sigma
-	url = git@github.com:armfazh/draft-irtf-cfrg-sigma-protocols.git
+	url = git@github.com:mmaker/draft-irtf-cfrg-sigma-protocols.git
