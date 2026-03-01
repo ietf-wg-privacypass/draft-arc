@@ -3,12 +3,17 @@
 
 import sys
 
+# Load arc_groups first to set up paths correctly
+load('arc_groups.sage')
+# Load arc.sage to get Client, Server, PresentationState, Presentation, Credential
+load('arc.sage')
+# Load arc_proofs to get PresentationProof
+load('arc_proofs.sage')
+# Load range_proof to get ComputeBases
+load('range_proof.sage')
+
 try:
-    from sagelib.test_drng import TestDRNG
-    from sagelib.arc import Client, Server, PresentationState, Presentation, Credential
-    from sagelib.arc_groups import G, GenG, GenH, hash_to_group, context_string
-    from sagelib.arc_proofs import PresentationProof
-    from sagelib.range_proof import ComputeBases
+    from sigma.poc.sagelib.test_drng import SeededPRNG
     from util import to_bytes
 except ImportError as e:
     sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + str(e))
@@ -17,7 +22,7 @@ def test_nonce_exceeds_limit():
     """Test that nonce >= presentationLimit fails verification"""
     print("Test 1: Nonce exceeds presentation limit...")
 
-    rng = TestDRNG("test_nonce_exceeds_limit".encode('utf-8'))
+    rng = SeededPRNG(b"test_nonce_exceeds_limit" + b"\x00" * 8, G.ScalarField)
     issuer = Server()
     client = Client(rng)
 
@@ -38,23 +43,23 @@ def test_nonce_exceeds_limit():
     # Now manually create a presentation with nonce = presentationLimit (should fail)
     try:
         # Create malformed presentation with nonce at the limit
-        a = G.random_scalar(rng)
-        r = G.random_scalar(rng)
-        z = G.random_scalar(rng)
+        a = rng.random_scalar()
+        r = rng.random_scalar()
+        z = rng.random_scalar()
 
-        U = a * credential.U
-        U_prime = a * credential.U_prime
-        U_prime_commit = U_prime + r * GenG
-        m1_commit = credential.m1 * U + z * GenH
+        U = G.scalar_mult(a, credential.U)
+        U_prime = G.scalar_mult(a, credential.U_prime)
+        U_prime_commit = U_prime + G.scalar_mult(r, GenG)
+        m1_commit = G.scalar_mult(credential.m1, U) + G.scalar_mult(z, GenH)
 
         # Use nonce at the limit
-        bad_nonce = presentation_limit
-        nonce_blinding = G.random_scalar(rng)
-        nonce_commit = bad_nonce * GenG + nonce_blinding * GenH
+        bad_nonce = G.ScalarField.field(presentation_limit)
+        nonce_blinding = rng.random_scalar()
+        nonce_commit = G.scalar_mult(bad_nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
         generator_T = hash_to_group(presentation_context, to_bytes("Tag"))
-        tag = inverse_mod(credential.m1 + bad_nonce, G.order()) * generator_T
-        V = (z * credential.X1) - (r * GenG)
+        tag = G.scalar_mult(1/(credential.m1 + bad_nonce), generator_T)
+        V = G.scalar_mult(z, credential.X1) - G.scalar_mult(r, GenG)
 
         # Try to create proof with bad nonce
         proof = PresentationProof.prove(U, U_prime_commit, m1_commit, tag, generator_T,
@@ -82,7 +87,7 @@ def test_invalid_bit_decomposition():
     """Test that incorrect bit decomposition fails"""
     print("Test 2: Invalid bit decomposition...")
 
-    rng = TestDRNG("test_invalid_bit_decomposition".encode('utf-8'))
+    rng = SeededPRNG(b"test_invalid_bit_decomposition" + b"\x00" * 2, G.ScalarField)
     issuer = Server()
     client = Client(rng)
 
@@ -104,8 +109,8 @@ def test_invalid_bit_decomposition():
     tampered_D = list(valid_presentation.proof.D)
     if len(tampered_D) > 0:
         # Create a random element by multiplying generator by random scalar
-        random_scalar = G.random_scalar(rng)
-        tampered_D[0] = random_scalar * GenG  # Replace with random element
+        random_scalar = rng.random_scalar()
+        tampered_D[0] = G.scalar_mult(random_scalar, GenG)  # Replace with random element
 
         # Create tampered proof with modified D
         tampered_proof = PresentationProof(
@@ -141,7 +146,7 @@ def test_invalid_nonce_commitment():
     """Test that wrong nonce commitment fails"""
     print("Test 3: Invalid nonce commitment...")
 
-    rng = TestDRNG("test_invalid_nonce_commitment".encode('utf-8'))
+    rng = SeededPRNG(b"test_invalid_nonce_commitment" + b"\x00" * 3, G.ScalarField)
     issuer = Server()
     client = Client(rng)
 
@@ -160,8 +165,8 @@ def test_invalid_nonce_commitment():
     valid_presentation = state.present(rng, {})
 
     # Replace nonce_commit with a random commitment
-    random_scalar = G.random_scalar(rng)
-    bad_nonce_commit = random_scalar * GenG
+    random_scalar = rng.random_scalar()
+    bad_nonce_commit = G.scalar_mult(random_scalar, GenG)
 
     tampered_presentation = Presentation(
         valid_presentation.U,
@@ -187,7 +192,7 @@ def test_reused_nonce_detection():
     """Test that same nonce produces same tag (for server-side double-spend detection)"""
     print("Test 4: Reused nonce produces same tag...")
 
-    rng = TestDRNG("test_reused_nonce".encode('utf-8'))
+    rng = SeededPRNG(b"test_reused_nonce" + b"\x00" * 15, G.ScalarField)
     issuer = Server()
     client = Client(rng)
 
@@ -202,32 +207,32 @@ def test_reused_nonce_detection():
     presentation_limit = 5
 
     # Manually create two presentations with the same nonce
-    nonce = 1
+    nonce = G.ScalarField.field(1)
 
     # First presentation
-    a1 = G.random_scalar(rng)
-    r1 = G.random_scalar(rng)
-    z1 = G.random_scalar(rng)
-    U1 = a1 * credential.U
-    U_prime1 = a1 * credential.U_prime
-    U_prime_commit1 = U_prime1 + r1 * GenG
-    m1_commit1 = credential.m1 * U1 + z1 * GenH
-    nonce_blinding1 = G.random_scalar(rng)
-    nonce_commit1 = nonce * GenG + nonce_blinding1 * GenH
+    a1 = rng.random_scalar()
+    r1 = rng.random_scalar()
+    z1 = rng.random_scalar()
+    U1 = G.scalar_mult(a1, credential.U)
+    U_prime1 = G.scalar_mult(a1, credential.U_prime)
+    U_prime_commit1 = U_prime1 + G.scalar_mult(r1, GenG)
+    m1_commit1 = G.scalar_mult(credential.m1, U1) + G.scalar_mult(z1, GenH)
+    nonce_blinding1 = rng.random_scalar()
+    nonce_commit1 = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding1, GenH)
     generator_T = hash_to_group(presentation_context, to_bytes("Tag"))
-    tag1 = inverse_mod(credential.m1 + nonce, G.order()) * generator_T
+    tag1 = G.scalar_mult(1/(credential.m1 + nonce), generator_T)
 
     # Second presentation with same nonce
-    a2 = G.random_scalar(rng)
-    r2 = G.random_scalar(rng)
-    z2 = G.random_scalar(rng)
-    U2 = a2 * credential.U
-    U_prime2 = a2 * credential.U_prime
-    U_prime_commit2 = U_prime2 + r2 * GenG
-    m1_commit2 = credential.m1 * U2 + z2 * GenH
-    nonce_blinding2 = G.random_scalar(rng)
-    nonce_commit2 = nonce * GenG + nonce_blinding2 * GenH
-    tag2 = inverse_mod(credential.m1 + nonce, G.order()) * generator_T
+    a2 = rng.random_scalar()
+    r2 = rng.random_scalar()
+    z2 = rng.random_scalar()
+    U2 = G.scalar_mult(a2, credential.U)
+    U_prime2 = G.scalar_mult(a2, credential.U_prime)
+    U_prime_commit2 = U_prime2 + G.scalar_mult(r2, GenG)
+    m1_commit2 = G.scalar_mult(credential.m1, U2) + G.scalar_mult(z2, GenH)
+    nonce_blinding2 = rng.random_scalar()
+    nonce_commit2 = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding2, GenH)
+    tag2 = G.scalar_mult(1/(credential.m1 + nonce), generator_T)
 
     # Tags should be identical for the same nonce
     if tag1 == tag2:
@@ -241,7 +246,7 @@ def test_exceed_presentation_limit():
     """Test that exceeding limit raises error"""
     print("Test 5: Exceeding presentation limit...")
 
-    rng = TestDRNG("test_exceed_limit".encode('utf-8'))
+    rng = SeededPRNG(b"test_exceed_limit" + b"\x00" * 15, G.ScalarField)
     issuer = Server()
     client = Client(rng)
 
@@ -283,7 +288,7 @@ def test_tampered_presentation():
     """Test that tampered presentation elements fail"""
     print("Test 6: Tampered presentation elements...")
 
-    rng = TestDRNG("test_tampered".encode('utf-8'))
+    rng = SeededPRNG(b"test_tampered" + b"\x00" * 19, G.ScalarField)
     issuer = Server()
     client = Client(rng)
 
@@ -306,9 +311,9 @@ def test_tampered_presentation():
 
     # Test tampering with U
     total_tests += 1
-    random_scalar = G.random_scalar(rng)
+    random_scalar = rng.random_scalar()
     tampered_U = Presentation(
-        random_scalar * GenG,  # Replace with random element
+        G.scalar_mult(random_scalar, GenG),  # Replace with random element
         valid_presentation.U_prime_commit,
         valid_presentation.m1_commit,
         valid_presentation.tag,
@@ -325,11 +330,11 @@ def test_tampered_presentation():
 
     # Test tampering with m1_commit
     total_tests += 1
-    random_scalar = G.random_scalar(rng)
+    random_scalar = rng.random_scalar()
     tampered_m1 = Presentation(
         valid_presentation.U,
         valid_presentation.U_prime_commit,
-        random_scalar * GenG,  # Replace with random element
+        G.scalar_mult(random_scalar, GenG),  # Replace with random element
         valid_presentation.tag,
         valid_presentation.nonce_commit,
         valid_presentation.proof
@@ -344,12 +349,12 @@ def test_tampered_presentation():
 
     # Test tampering with tag
     total_tests += 1
-    random_scalar = G.random_scalar(rng)
+    random_scalar = rng.random_scalar()
     tampered_tag = Presentation(
         valid_presentation.U,
         valid_presentation.U_prime_commit,
         valid_presentation.m1_commit,
-        random_scalar * GenG,  # Replace with random element
+        G.scalar_mult(random_scalar, GenG),  # Replace with random element
         valid_presentation.nonce_commit,
         valid_presentation.proof
     )
