@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-02-24T01:20:32.654868+00:00",
+  "timestamp": "2026-03-01T01:28:01.475799+00:00",
   "repo": "ietf-wg-privacypass/draft-arc",
   "labels": [
     {
@@ -60,15 +60,15 @@
       "id": "I_kwDONyB6uM6rFQ2R",
       "title": "Use ZKProof spec for generation of Schnorr proofs",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/7",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "cathieyun",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Currently, ARC defines and uses its own ZKP Schnorr compiler.\nTo reuse redundancy and reuse tooling across projects, it would be better to use the ZKProof spec defined here:\nhttps://mmaker.github.io/spfs/draft-orru-zkproof-sigma.html#name-ciphersuites\n\nHowever, adopting the ZKProof spec is blocking on it having a reference implementation and test vectors, which I filed an issue for here:\nhttps://github.com/mmaker/spfs/issues/1",
       "createdAt": "2025-02-22T00:36:06Z",
-      "updatedAt": "2025-09-14T05:22:59Z",
-      "closedAt": null,
+      "updatedAt": "2026-02-27T05:09:18Z",
+      "closedAt": "2026-02-27T05:09:18Z",
       "comments": [
         {
           "author": "chris-wood",
@@ -213,9 +213,17 @@
       ],
       "body": "Currently we get deterministic ZKP output by using an incrementing counter for blinding:\nhttps://github.com/chris-wood/draft-arc/blob/main/poc/zkp.sage#L62\n\nWe should move to a seeded PRNG instead, this is better practice. \n\n(Suggestion from Michele / @mmaker)",
       "createdAt": "2025-02-24T21:47:37Z",
-      "updatedAt": "2025-06-13T20:07:56Z",
+      "updatedAt": "2026-02-27T05:13:37Z",
       "closedAt": null,
-      "comments": []
+      "comments": [
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Updated the spec to use sigma, which is using a seeded PRNG:\nhttps://github.com/ietf-wg-privacypass/draft-arc/pull/37\n\nWill also update the POC to be in line with that spec change.",
+          "createdAt": "2026-02-27T05:13:37Z",
+          "updatedAt": "2026-02-27T05:13:37Z"
+        }
+      ]
     },
     {
       "number": 14,
@@ -591,15 +599,15 @@
       "id": "I_kwDONyB6uM7LfACG",
       "title": "Call for adoption feedback",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/36",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "cathieyun",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "RandomScalar() in 3.1 returns a non-zero element, but P-256 desc in 6.1 generates a scalar in [0, G.Order() - 1], i.e. includes zero. A zero for blinding factors or randomization scalars breaks the protocol.\n\nProver in 5.1.1.4 appends blinded_element in a loop over a linear_combination, but Verifier in 5.1.2.2 appends challenge_element once per constraint.\n\nSchnorr mismatches/verification bugs in 5.1: Prover appends multiple blinded_elements per constraint. Verifier appends one, so challenges won't match. Verify() also uses self.elements vs state.elements.\n",
       "createdAt": "2025-09-13T17:46:30Z",
-      "updatedAt": "2025-09-17T05:33:25Z",
-      "closedAt": null,
+      "updatedAt": "2026-02-27T05:09:18Z",
+      "closedAt": "2026-02-27T05:09:18Z",
       "comments": [
         {
           "author": "cathieyun",
@@ -615,16 +623,24 @@
       "id": "I_kwDONyB6uM7U6h0o",
       "title": "Privacy Pass adoption - spec renames",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/46",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "cathieyun",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
       "body": "Following guidance for specs after they have been adopted by working groups:\nhttps://datatracker.ietf.org/doc/rfc7221/\n\nWe should rename the specs accordingly:\n`draft-yun-privacypass-arc` -> `draft-ietf-privacypass-arc`\n`draft-yun-privacypass-crypto-arc` -> `draft-ietf-privacypass-crypto-arc`\nin order to reflect the fact that they have been adopted by the privacy pass working group.\n\n(I'm also open to better names than `privacypass-crypto` for the spec that was formerly the `cfrg` spec).",
       "createdAt": "2025-10-30T19:00:14Z",
-      "updatedAt": "2025-10-30T19:00:48Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2026-02-27T05:11:58Z",
+      "closedAt": "2026-02-27T05:11:58Z",
+      "comments": [
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Closed by https://github.com/ietf-wg-privacypass/draft-arc/pull/54",
+          "createdAt": "2026-02-27T05:11:58Z",
+          "updatedAt": "2026-02-27T05:11:58Z"
+        }
+      ]
     },
     {
       "number": 47,
@@ -638,7 +654,7 @@
       "labels": [],
       "body": "Firstly, thank you all for your incredible work on these specs.\n\n## Summary\n\nI'm building a privacy-preserving access control system for cloud services and have identified a need for zero-knowledge range proofs on credential validity timestamps (both `valid_from` and `valid_until`) within the ARC protocol. This would enable flexible credential expiration without revealing specific timestamps that could shrink anonymity sets.\n\n## Use Case\n\nMy architecture separates concerns across three layers:\n\n- **Client layer**: End-user software that holds credentials and payment methods\n- **Service layer**: Cloud services (search, AI inference, data sync) that must not know user identity\n- **Payment layer**: Issues credentials when users purchase access (e.g., \"$15 for one month of service\")\n\nThe design goal is that the service layer cannot correlate activity with the payment layer or between different requests.\n\n## Current Limitation\n\nARC provides excellent unlinkability properties for rate-limited access, but credential validity must currently be managed by encoding validity in the request context:\n\n```\nrequestContext = \"payment-session:xyz:expires:2025-01\"\n```\n\nThis value is available in the clear with each presentation, and is therefore at a high risk of leaking correlating information. To ensure a sufficiently large anonymity set, credential expirations must align to fixed calendar boundaries.\n\nIn smaller scale services and whenever the cost of a credential is high (paying $20 as opposed to simply passing a captcha) the number of credentials will be small, and the fixed interval must be wide to ensure adequate privacy.\n\nAdopting a large \"common epoch\" like calendar months has many consequences:\n- Proration is required for new mid-month users.\n- New credentials for immediate use are constrained to the number of days remaining this month.\n- It's impossible to reliably offer credentials with shorter lifespans (1 week, etc).\n- A single limit cannot span multiple months.\n\nIn deployments that can support a small \"common epoch\" like days without privacy concerns, the use of such small windows imposes its own constraints. Breaking a subscription for \"3000 requests per month\" into 30 credentials supporting \"100 requests per day\" meaningfully changes the supported for irregular usage patterns.\n\n## Desired Capability\n\nI'd like the client to be able to prove:\n\n```\nvalid_from <= current_time <= valid_until\n```\n\nWithout revealing the actual values of `valid_from` or `valid_until`.\n\nThis would require:\n\n1. **Credential attributes for timestamps**: The credential would include `valid_from` and `valid_until` as hidden attributes (similar to how the balance is hidden in ACT)\n2. **Range proofs during presentation**: The client proves the current timestamp falls within the validity window using a zero-knowledge range proof\n3. **Unlinkability preservation**: Different credentials with different validity windows remain indistinguishable to the verifier\n\n## Technical Considerations\n\n### Timestamp representation\n\nTimestamps could be represented as Unix epoch seconds (or milliseconds), fitting within the scalar field. A 64-bit timestamp provides sufficient range and precision.\n\n### Range proof construction\n\nThe existing open issue mentions Bulletproofs for hiding the nonce:\n\n> [[OPEN ISSUE: hide the nonce and replace the tag proof with a range proof built from something like Bulletproofs.]]\n\nSimilar techniques could apply to timestamp bounds. The client would prove:\n- `current_time - valid_from >= 0` (credential has started)\n- `valid_until - current_time >= 0` (credential hasn't expired)\n\n### Clock synchronization\n\nPractical deployments would need to handle clock skew between client and server. The server could:\n- Accept a small tolerance (e.g., \u00b160 seconds)\n\n## Benefits\n\n1. **Flexible validity periods**: Users can purchase arbitrary durations without aligning to calendar boundaries\n2. **Seamless renewal**: Users can purchase overlapping credentials without complexity\n3. **Preserved anonymity**: No timestamps revealed that could fingerprint users\n4. **Simplified tag management**: Server can still use course epochs for tag storage cleanup, but credential validity is decoupled from these operational concerns\n\n## Questions for the Working Group\n\n1. Is this functionality in scope for ARC, or would it be better suited as a separate extension?\n2. Are there performance concerns with adding two range proofs (for both bounds) to each presentation?\n3. How should clock synchronization be handled between client and server?\n4. Are there existing constructions or implementations that could be referenced for this? \n5. Would this interact with the existing open issue around hiding the nonce with Bulletproofs, or are these orthogonal concerns?\n\n(Note: A related discussion exists at\u00a0[https://github.com/SamuelSchlesinger/draft-act/issues/7](https://github.com/SamuelSchlesinger/draft-act/issues/7))\n## More About My Use Case\n\nI'm designing a commercial cloud service where privacy is a core feature. Users pay for access through a separate payment layer, then access services without those services knowing their identity. The current ARC design works adequately for my immediate needs using monthly epochs, but timestamp range proofs would significantly improve flexibility and user experience.\n\nI know that this isn't the primary use-case of the Privacy Pass project, but it appears deeply compatible in its goals and implementation. Using Privacy Pass as a privacy-preserving \"proof of purchase\" mechanism is a very interesting general use-case.\n\nI'm happy to provide additional details about the use case or discuss implementation considerations. While my cryptographic knowledge is fairly rudimentary, I'm willing to contribute wherever I can be helpful, particularly to testing or implementation work.\n",
       "createdAt": "2025-11-20T02:08:13Z",
-      "updatedAt": "2026-01-12T06:43:16Z",
+      "updatedAt": "2026-02-26T17:55:03Z",
       "closedAt": "2026-01-08T05:17:33Z",
       "comments": [
         {
@@ -661,6 +677,13 @@
           "body": "Sorry for missing this issue until now! (I'll blame https://github.com/orgs/community/discussions/176383 for my inability to update my settings to get emailed about new issues/PRs... hoping that gets resolved, but in the meantime I will check manually more often!)\n\nIn case it's still helpful, here are some responses. I do still think your solution is workable, if you are willing to accept the complexity and performance overheads (which may be significant, depending on your timestamp granularity and some other considerations.)\n\n1. Is this functionality in scope for ARC, or would it be better suited as a separate extension?\nI think this would be better as a separate extension, due to the performance overhead - wouldn't want to make all ARC adopters have to incur that performance hit if they don't need fine-grained expiration bounds.\n\n2. Are there performance concerns with adding two range proofs (for both bounds) to each presentation?\nYes - depending on your granularity of timestamp, and how large of a range you will allow for each of these to be >= 0:\n`current_time - valid_from >= 0` (credential has started)\n`valid_until - current_time >= 0` (credential hasn't expired)\nBecause you can't just prove that they're >= 0... you have to proof that they are in some range `[0, n)` and the larger `n` is, the more expensive the range proof is.\n\n3. How should clock synchronization be handled between client and server?\nI don't actually see why this question is relevant - to my understanding, the current time would be sent in the clear, so the server can just see how much that differs from its own timestamp when it has received it, and if the gap is too large then it can choose to discard it.\n\n4. Are there existing constructions or implementations that could be referenced for this?\nNot that I'm aware of, but this could be a good questions for the IETF privacy pass group - they're a great source of knowledge :)\n\n5. Would this interact with the existing open issue around hiding the nonce with Bulletproofs, or are these orthogonal concerns?\nThese are orthogonal. The nonce hiding is a for rate limiting within the credential validity bounds, whereas you are discussing how to determine the credential validity bounds.\n\n> While working on https://github.com/chris-wood/draft-arc/pull/48 I found some flaws in my understanding of ARC, and I no longer find this necessary. More specifically, my use-case requires presentationLimit be set during issuance, which is very intentionally not the flow in ARC. I'm going to close this.\n\nI'm curious what you mean by \"presentationLimit must be set during issuance\"? Because you can set the expected rate limit in the tokenChallenge (which is bound to the credential) in the `redemption_context` field. Then during presentation, you have to encode `redemption_context` in the `presentation_context`, which is sent in the clear and bound to the presentation:\n```\npresentation_context = concat(\n  encode(2, len(challenge.issuer_name)),\n  challenge.issuer_name,\n  encode(2, len(challenge.origin_info)),\n  challenge.origin_info,\n  encode(2, len(challenge.redemption_context)),\n  challenge.redemption_context,\n  issuer_key_id)\n```\nThe verifier could check that the value set in redemption_context matches the presentation limit it expects (or just set presentation limit to that value). This forces the presentation_limit to be bound to the credential at the time of issuance.\n\nAlso if that's too complex, you can just hardcode a presentation limit for a given issuance/verification key.\n\nBoth of these approaches work if you don't expect there to be too many different presentation limits (eg a \"free\" vs \"paid\" tier). But if you expect every user to have a different presentation limit, for some reason, then these approaches which reveal the presentation limit at the time of presentation will not work, and you'd have to do something more complex which hides the presentation limit (possible, but yet another layer of complexity).",
           "createdAt": "2026-01-12T06:43:16Z",
           "updatedAt": "2026-01-12T06:43:16Z"
+        },
+        {
+          "author": "mike-marcacci",
+          "authorAssociation": "NONE",
+          "body": "Thank you so much for your reply @cathieyun, and *my* apologies for such a delayed response (I somehow missed your message too).\n\nThanks also for answering these questions. A couple, I suppose, were more \"open\" questions inherently raised by the proposed feature (clock synchronization, etc).\n\nRE the scenario you proposed, I really hadn't considered that. Passing this value in the clear during presentation was something I was avoiding, but you're absolutely right that given few \"tiers\", they would each have sufficient anonymity sets to avoid this being an issue.\n\nMy focus has been on other components of this system over the past month, but I'm returning to this piece now.\n\nIs it helpful for me to share my evolving thoughts and experience as I work through this use case, or is it just noise?",
+          "createdAt": "2026-02-26T17:55:02Z",
+          "updatedAt": "2026-02-26T17:55:02Z"
         }
       ]
     },
@@ -693,16 +716,24 @@
       "id": "I_kwDONyB6uM7rLlG-",
       "title": "Simplification of challenge composition",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/56",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "martinthomson",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "Given that `Ne` is a constant, why are you encoding it for each element in [ComposeChallenge](https://ietf-wg-privacypass.github.io/draft-arc/draft-ietf-privacypass-arc-crypto.html#section-5.1.1.4-4)?  It seems like the I2OSP calls there can be dropped.",
       "createdAt": "2026-02-16T03:25:46Z",
-      "updatedAt": "2026-02-16T03:25:46Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2026-02-27T05:19:20Z",
+      "closedAt": "2026-02-27T05:19:20Z",
+      "comments": [
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This is addressed by moving from our in-spec \"proof compiler\" to the Sigma Protocols / Fiat-Shamir specs. This migration happened for the spec in https://github.com/ietf-wg-privacypass/draft-arc/pull/37.",
+          "createdAt": "2026-02-27T05:19:20Z",
+          "updatedAt": "2026-02-27T05:19:20Z"
+        }
+      ]
     },
     {
       "number": 57,
@@ -725,48 +756,72 @@
       "id": "I_kwDONyB6uM7rLnY3",
       "title": "Constrain: label or result?",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/58",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "martinthomson",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "https://datatracker.ietf.org/doc/html/draft-ietf-privacypass-arc-crypto-00#section-5.1.1.3 says:\n\n```python\ndef Constrain(label, linearCombination):\n  state.constraints.append((result, linearCombination))\n```\n\nThe rest of the definition uses \"result\", so I think that \"label\" is in error.",
       "createdAt": "2026-02-16T03:29:38Z",
-      "updatedAt": "2026-02-16T03:29:38Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2026-02-27T05:20:10Z",
+      "closedAt": "2026-02-27T05:20:10Z",
+      "comments": [
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This is addressed by moving from our in-spec \"proof compiler\" to the Sigma Protocols / Fiat-Shamir specs. This migration happened for the spec in https://github.com/ietf-wg-privacypass/draft-arc/pull/37.",
+          "createdAt": "2026-02-27T05:20:10Z",
+          "updatedAt": "2026-02-27T05:20:10Z"
+        }
+      ]
     },
     {
       "number": 59,
       "id": "I_kwDONyB6uM7rLoSm",
       "title": "ComputeStatementAndWitnesses missing r argument",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/59",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "martinthomson",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "Probably an error, because it is described, but the code is unclear.\n\nThe code also calls `allocate_scalars` and `allocateScalars` on consecutive lines.",
       "createdAt": "2026-02-16T03:31:24Z",
-      "updatedAt": "2026-02-16T03:31:24Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2026-02-27T05:24:00Z",
+      "closedAt": "2026-02-27T05:23:59Z",
+      "comments": [
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This was addressed by the PR to incorporate the range proof into the actual presentation:\nhttps://github.com/ietf-wg-privacypass/draft-arc/pull/53\n\n(Will update the datatracker tag accordingly!)",
+          "createdAt": "2026-02-27T05:24:00Z",
+          "updatedAt": "2026-02-27T05:24:00Z"
+        }
+      ]
     },
     {
       "number": 60,
       "id": "I_kwDONyB6uM7rLo-A",
       "title": "Better range proof",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/60",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "martinthomson",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "The range proof does the typical 0..2^n proof that involves decomposition and proof of bit-ness.  This could be improved using the same techniques recently added in the VDAF spec.",
       "createdAt": "2026-02-16T03:32:44Z",
-      "updatedAt": "2026-02-16T03:32:44Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2026-02-27T05:42:11Z",
+      "closedAt": "2026-02-27T05:42:11Z",
+      "comments": [
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Just checking, are you referring to the range checks in the VDAF spec here?\nhttps://www.ietf.org/archive/id/draft-irtf-cfrg-vdaf-18.html#section-7.4.2-3\n\nThe range proof actually uses the same bit decomposition base selection tricks as the VDAF spec (not a coincidence, we have been in collaboration with the VDAF spec authors). So, it is not constrained to [0..2^n) ranges but can do proof of arbitrary ranges.\n\nFrom the VDAF spec:\n> All but the last of the weights are successive powers of two, as in the binary bit decomposition, and the last weight is chosen such that the sum of all weights is equal to max_measurement.\n\nThe only difference in ARC is that we are sorting the bases, so the non-power-of-two base is not at the end but rather in the sorted list. But this is just an implementation detail. ",
+          "createdAt": "2026-02-27T05:42:11Z",
+          "updatedAt": "2026-02-27T05:42:11Z"
+        }
+      ]
     },
     {
       "number": 61,
@@ -780,7 +835,45 @@
       "labels": [],
       "body": "There is a `LinearRelation` type used in the range proof that doesn't have a definition.  The associated methods look like they might relate to the functions that `Prover` provides, but they take a different form.",
       "createdAt": "2026-02-16T22:22:04Z",
-      "updatedAt": "2026-02-16T22:22:04Z",
+      "updatedAt": "2026-02-27T08:20:01Z",
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "LinearRelation is defined in the Sigma Protocol spec here:\nhttps://github.com/mmaker/draft-irtf-cfrg-sigma-protocols/blob/main/draft-irtf-cfrg-sigma-protocols.md#statements-for-linear-relations\n\nIt is (now, as of https://github.com/ietf-wg-privacypass/draft-arc/pull/37) used in all the proof generation and verification functions to create the \"proof circuit\".",
+          "createdAt": "2026-02-27T05:16:29Z",
+          "updatedAt": "2026-02-27T05:16:29Z"
+        },
+        {
+          "author": "martinthomson",
+          "authorAssociation": "NONE",
+          "body": "You probably should explicitly point to what you are using from that draft somewhere.  I see no references to LinearRelation except in code.  (And only one reference to the draft as a whole outside of some broken references in the code (`{{SIGMA}}`).",
+          "createdAt": "2026-02-27T07:12:31Z",
+          "updatedAt": "2026-02-27T07:12:31Z"
+        },
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "Ok, will re-open this issue and address it in a cleanup PR. Thanks for the callout.",
+          "createdAt": "2026-02-27T08:20:01Z",
+          "updatedAt": "2026-02-27T08:20:01Z"
+        }
+      ]
+    },
+    {
+      "number": 62,
+      "id": "I_kwDONyB6uM7uZF9X",
+      "title": "Lots of broken citations",
+      "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/62",
+      "state": "OPEN",
+      "author": "martinthomson",
+      "authorAssociation": "NONE",
+      "assignees": [],
+      "labels": [],
+      "body": "kramdown-rfc won't expand references that appear in code.  There are lots of braces in code blocks that seem like they want to be references, but they are just code.",
+      "createdAt": "2026-02-27T07:14:05Z",
+      "updatedAt": "2026-02-27T07:14:05Z",
       "closedAt": null,
       "comments": []
     }
@@ -1890,24 +1983,26 @@
       "id": "PR_kwDONyB6uM6odk5m",
       "title": "Move ARC spec to use Sigma and Fiat-Shamir specs for proofs",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/pull/37",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "cathieyun",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
-      "body": "Removes the Schnorr proof compiler section from the ARC spec, and replaces it with the Sigma and Fiat-Shamir specs instead. Updates the proof creation and verification to use the APIs from the Sigma and Fiat-Shamir specs.\r\n\r\nTo-dos:\r\n- Pass in an rng for the prover, since `NISigmaProtocol` needs it an rng to generate a proof. This is currently missing.\r\n- Update the poc to also use the sigma protocol / fiat-shamir poc for generating proofs, and update the test vectors accordingly. \r\n  - This may involve some difficulty, as the sigma/f-s poc uses its own definition of groups that is not the same, and possibly is not compatible with, the current ARC definition of groups (which is the IETF \"boilerplate\" group definition). See this issue for more discussion on the topic: https://github.com/mmaker/draft-irtf-cfrg-sigma-protocols/issues/71#issuecomment-3288847813\r\n  - Due to the difficulties caused by the group incompatibilities, I may tackle this in a future PR once the group incompatibilities have been addressed.\r\n\r\nDone:\r\n- Check if we need to define a codec for `NISigmaProtocol`? It seems like `NISigmaProtocol` needs a codec defined, but there is nowhere to define it (see section 5 in https://datatracker.ietf.org/doc/draft-irtf-cfrg-fiat-shamir/). Maybe it is set to `LinearMapCodec` by default, but I don't see that specified in the spec. -> This is fixed in https://github.com/mmaker/draft-irtf-cfrg-sigma-protocols/pull/79\r\n\r\nThis also closes this issue, as it fixes the `RandomScalar()` typo: https://github.com/chris-wood/draft-arc/issues/36",
+      "body": "Removes the Schnorr proof compiler section from the ARC spec, and replaces it with the Sigma and Fiat-Shamir specs instead. Updates the proof creation and verification to use the APIs from the Sigma and Fiat-Shamir specs.\r\n\r\nTasks:\r\n- [x] Pass in an rng for the prover, since `NISigmaProtocol` needs it an rng to generate a proof. This is currently missing. Reference the Sigma protocol spec for how to define the RNG.\r\n- [x] Check if we need to define a codec for `NISigmaProtocol`? It seems like `NISigmaProtocol` needs a codec defined, but there is nowhere to define it (see section 5 in https://datatracker.ietf.org/doc/draft-irtf-cfrg-fiat-shamir/). Maybe it is set to `LinearMapCodec` by default, but I don't see that specified in the spec. -> This is fixed in https://github.com/mmaker/draft-irtf-cfrg-sigma-protocols/pull/79\r\n- [x] This also closes this issue, as it fixes the `RandomScalar()` typo: https://github.com/chris-wood/draft-arc/issues/36\r\n\r\nTasks for a follow-up PR:\r\n- Update the poc to also use the sigma protocol / fiat-shamir poc for generating proofs, and update the test vectors accordingly. \r\n  - This may involve some difficulty, as the sigma/f-s poc uses its own definition of groups that is not the same, and possibly is not compatible with, the current ARC definition of groups (which is the IETF \"boilerplate\" group definition). See this issue for more discussion on the topic: https://github.com/mmaker/draft-irtf-cfrg-sigma-protocols/issues/71#issuecomment-3288847813\r\n  - Due to the difficulties caused by the group incompatibilities, I will tackle this in a future PR once the group incompatibilities have been addressed.",
       "createdAt": "2025-09-14T05:18:21Z",
-      "updatedAt": "2026-02-23T07:11:14Z",
+      "updatedAt": "2026-02-27T05:09:20Z",
       "baseRepository": "ietf-wg-privacypass/draft-arc",
       "baseRefName": "main",
       "baseRefOid": "365257fc6f68c12130e9f8e0a1d209c325781297",
       "headRepository": "ietf-wg-privacypass/draft-arc",
       "headRefName": "cathie/sigma",
-      "headRefOid": "79fa1548d2dcf874a86197379533b026231562de",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
+      "headRefOid": "892d9b69c37565c8949891885880b488d6420955",
+      "closedAt": "2026-02-27T05:09:17Z",
+      "mergedAt": "2026-02-27T05:09:17Z",
+      "mergedBy": "cathieyun",
+      "mergeCommit": {
+        "oid": "167685551557c20eb45b792d168b810bd2fb475b"
+      },
       "comments": [
         {
           "author": "cathieyun",
@@ -1971,6 +2066,13 @@
           "body": "Rebased to pull in the nonce hiding and spec renaming changes.",
           "createdAt": "2026-02-23T07:11:14Z",
           "updatedAt": "2026-02-23T07:11:14Z"
+        },
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I synced with @chris-wood separately and he said the PR looks good.\r\nWill merge this in and work on the corresponding poc updates in a separate PR.",
+          "createdAt": "2026-02-27T05:09:04Z",
+          "updatedAt": "2026-02-27T05:09:04Z"
         }
       ],
       "reviews": [
@@ -2310,6 +2412,19 @@
               "updatedAt": "2025-09-24T04:06:27Z"
             }
           ]
+        },
+        {
+          "id": "PRR_kwDONyB6uM7mWaZa",
+          "commit": {
+            "abbreviatedOid": "79fa154"
+          },
+          "author": "armfazh",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2026-02-27T03:21:28Z",
+          "updatedAt": "2026-02-27T03:21:28Z",
+          "comments": []
         }
       ]
     },
@@ -3732,6 +3847,74 @@
           "body": "",
           "createdAt": "2026-02-05T19:33:28Z",
           "updatedAt": "2026-02-05T19:33:28Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 63,
+      "id": "PR_kwDONyB6uM7G4N-x",
+      "title": "Move sage code to use sigma/fiat-shamir code",
+      "url": "https://github.com/ietf-wg-privacypass/draft-arc/pull/63",
+      "state": "OPEN",
+      "author": "cathieyun",
+      "authorAssociation": "COLLABORATOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Migration of proof-of-concept (sage code) dependencies.\r\nThis is a continuation of the spec migration in this PR: https://github.com/ietf-wg-privacypass/draft-arc/pull/37\r\n\r\nTasks:\r\n\r\n- [x] Add the sigma spec repo as a git submodule: https://github.com/mmaker/draft-irtf-cfrg-sigma-protocols\r\n   - Note: we could add just the `poc` folder as a sparse subtree, but currently we're just adding the whole repository - specs and all. This is nice because we can also reference the spec for the corresponding API, I think?\r\n- [x] Remove poc code related to ZKPs and curves / groups, which is now redundant with the sigma spec poc proof and curve / group code\r\n- [x] Update imports so that the ARC proofs can access the new files\r\n- [x] Update the ARC proofs to use the new files, update call sites.\r\n- [x] Implement seeded PRNG for test vector generation, update tests to use sigma/f-s.\r\n- [ ] Fix some misc building / import bugs",
+      "createdAt": "2026-02-27T17:22:35Z",
+      "updatedAt": "2026-02-28T18:57:45Z",
+      "baseRepository": "ietf-wg-privacypass/draft-arc",
+      "baseRefName": "main",
+      "baseRefOid": "167685551557c20eb45b792d168b810bd2fb475b",
+      "headRepository": "ietf-wg-privacypass/draft-arc",
+      "headRefName": "sigma-poc",
+      "headRefOid": "625bdaf7a166ea6f2c907ad9ca1d85d0cf093486",
+      "closedAt": null,
+      "mergedAt": null,
+      "mergedBy": null,
+      "mergeCommit": null,
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 64,
+      "id": "PR_kwDONyB6uM7G-XVf",
+      "title": "Explicit scalar multiplication instead of operand.",
+      "url": "https://github.com/ietf-wg-privacypass/draft-arc/pull/64",
+      "state": "MERGED",
+      "author": "armfazh",
+      "authorAssociation": "CONTRIBUTOR",
+      "assignees": [],
+      "labels": [],
+      "body": "Group library needs explicti calls to scalar_mult",
+      "createdAt": "2026-02-28T05:31:27Z",
+      "updatedAt": "2026-02-28T18:57:44Z",
+      "baseRepository": "ietf-wg-privacypass/draft-arc",
+      "baseRefName": "sigma-poc",
+      "baseRefOid": "6c63f99de70bae08964d2f59315c250fe1ff11be",
+      "headRepository": "armfazh/draft-arc",
+      "headRefName": "scalar_mult",
+      "headRefOid": "10fca15c1bd36422f1a25fce143952eb2f37ea79",
+      "closedAt": "2026-02-28T18:57:44Z",
+      "mergedAt": "2026-02-28T18:57:44Z",
+      "mergedBy": "cathieyun",
+      "mergeCommit": {
+        "oid": "625bdaf7a166ea6f2c907ad9ca1d85d0cf093486"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "PRR_kwDONyB6uM7mte7w",
+          "commit": {
+            "abbreviatedOid": "10fca15"
+          },
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "Thanks for finding the fix, LGTM",
+          "createdAt": "2026-02-28T18:57:29Z",
+          "updatedAt": "2026-02-28T18:57:29Z",
           "comments": []
         }
       ]
