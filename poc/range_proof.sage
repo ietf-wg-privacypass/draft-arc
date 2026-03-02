@@ -45,7 +45,7 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
     Outputs:
     - statement: Modified statement with range proof constraints added
     - D: [Element], array of commitments to the bit decomposition
-    - range_witness: [Scalar], witness values for range proof (b[0], s[0], s2[0], b[1], s[1], s2[1], ...)
+    - range_witness: [Scalar], witness values for range proof (b[0], ..., b[n-1], s[0], ..., s[n-1], s2[0], ..., s2[n-1])
     """
     # Compute bit decomposition and commitments
     bases = ComputeBases(presentation_limit)
@@ -83,15 +83,11 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
     D_last = G.scalar_mult(G.ScalarField.field(b[idx]), GenG) + G.scalar_mult(G.ScalarField.field(s_last), GenH)
     D.append(D_last)
 
-    # Allocate scalar variables (3 per bit: b, s, s2)
+    # Allocate scalar variables (b, s, s2 for each bit)
     num_bits = len(b)
-    num_scalars = 3 * num_bits
-    scalar_vars = statement.allocate_scalars(num_scalars)
-
-    # Unpack into separate arrays
-    vars_b = scalar_vars[0::3]      # Every 3rd element starting at 0
-    vars_s = scalar_vars[1::3]      # Every 3rd element starting at 1
-    vars_s2 = scalar_vars[2::3]     # Every 3rd element starting at 2
+    vars_b = statement.allocate_scalars(num_bits)
+    vars_s = statement.allocate_scalars(num_bits)
+    vars_s2 = statement.allocate_scalars(num_bits)
 
     # Allocate and set element variables for bit commitments D
     # Special case: when presentation_limit = 2, D[0] == nonce_commit
@@ -109,10 +105,8 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
         # D[i] = b[i] * D[i] + s2[i] * generatorH (proves b[i] is in {0,1})
         statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], gen_H_var)])
 
-    # Build witness array: interleave b, s, s2 values
-    range_witness = []
-    for i in range(num_bits):
-        range_witness.extend([b[i], s[i], s2[i]])
+    # Build witness array: all b values, then all s values, then all s2 values
+    range_witness = list(b) + list(s) + list(s2)
 
     return (statement, D, range_witness)
 
@@ -136,14 +130,10 @@ def VerifyRangeProofHelper(statement, D, nonce_commit, presentation_limit, gen_G
     bases = ComputeBases(presentation_limit)
     num_bits = len(bases)
 
-    # Allocate scalar variables (3 per bit: b, s, s2)
-    num_scalars = 3 * num_bits
-    scalar_vars = statement.allocate_scalars(num_scalars)
-
-    # Unpack into separate arrays
-    vars_b = scalar_vars[0::3]      # Every 3rd element starting at 0
-    vars_s = scalar_vars[1::3]      # Every 3rd element starting at 1
-    vars_s2 = scalar_vars[2::3]     # Every 3rd element starting at 2
+    # Allocate scalar variables (b, s, s2 for each bit)
+    vars_b = statement.allocate_scalars(num_bits)
+    vars_s = statement.allocate_scalars(num_bits)
+    vars_s2 = statement.allocate_scalars(num_bits)
 
     # Allocate and set element variables for bit commitments D
     # Special case: when presentation_limit = 2, D[0] == nonce_commit
