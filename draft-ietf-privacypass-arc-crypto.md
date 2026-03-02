@@ -1638,7 +1638,6 @@ To ensure no information is leaked during protocol execution, all operations tha
 
 # Alternatives considered
 
-
 ARC uses the MACGGM algebraic MAC as its underlying primitive, as detailed in {{KVAC}} and {{REVISITING_KVAC}}. This offers the benefit of having a lower credential size than MACDDH, which is an alternative algebraic MAC detailed in {{KVAC}}.
 
 The BBS anonymous credential scheme, as detailed in {{BBS}} and its variants, is efficient and publicly verifiable, but requires pairings for verification. This is problematic for adoption because pairings are not supported as widely in software and hardware as non-pairing elliptic curves.
@@ -1651,7 +1650,18 @@ This document has no IANA actions.
 
 # Test Vectors
 
-This section contains test vectors for the ARC ciphersuites specified in this document.
+## Seeded PRNG
+
+For interoperability, the random number generator used for test vectors is implemented using the SeededPRNG defined in Section A.1 of {{SIGMA}}. For ease of reference, the SeededPRNG API is:
+
+    class SeededPRNG:
+        def __init__(self, seed: bytes, order: int):
+            pass
+
+        def random_scalar(self) -> Scalar:
+            pass
+
+The following sections contain test vectors for the ARC ciphersuites specified in this document.
 
 {::include ./poc/vectors/allVectors.txt}
 
