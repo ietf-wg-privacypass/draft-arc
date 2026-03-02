@@ -2599,7 +2599,8 @@ def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
     nonceBlinding, presentationLimit, genGVar, genHVar, rng)
 
   # Build witness vector matching the scalar allocations
-  witness = [credential.m1, z, -r, nonce, nonceBlinding] + rangeWitness
+  witness = [credential.m1, z, -r, nonce, nonceBlinding]
+  witness.extend(rangeWitness)
 
   session_id = contextString + "CredentialPresentation"
   prover = NISchnorrProofShake128P256(session_id, statement)
