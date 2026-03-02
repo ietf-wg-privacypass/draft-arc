@@ -1319,7 +1319,10 @@ rate-limit access from anonymous clients.<a href="#section-abstract-1" class="pi
             <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-test-vectors" class="internal xref">Test Vectors</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.1">
-                <p id="section-toc.1-1.10.2.1.1"><a href="#section-10.1" class="auto internal xref">10.1</a>.  <a href="#name-arcv1-p256" class="internal xref">ARCV1-P256</a></p>
+                <p id="section-toc.1-1.10.2.1.1"><a href="#section-10.1" class="auto internal xref">10.1</a>.  <a href="#name-seeded-prng" class="internal xref">Seeded PRNG</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10.2.2">
+                <p id="section-toc.1-1.10.2.2.1"><a href="#section-10.2" class="auto internal xref">10.2</a>.  <a href="#name-arcv1-p256" class="internal xref">ARCV1-P256</a></p>
 </li>
             </ul>
 </li>
@@ -3160,13 +3163,31 @@ necessary for these properties to hold.<a href="#section-7-2" class="pilcrow">¶
       <h2 id="name-test-vectors">
 <a href="#section-10" class="section-number selfRef">10. </a><a href="#name-test-vectors" class="section-name selfRef">Test Vectors</a>
       </h2>
-<p id="section-10-1">This section contains test vectors for the ARC ciphersuites specified in this document.<a href="#section-10-1" class="pilcrow">¶</a></p>
-<div id="arcv1-p256">
+<div id="seeded-prng">
 <section id="section-10.1">
-        <h3 id="name-arcv1-p256">
-<a href="#section-10.1" class="section-number selfRef">10.1. </a><a href="#name-arcv1-p256" class="section-name selfRef">ARCV1-P256</a>
+        <h3 id="name-seeded-prng">
+<a href="#section-10.1" class="section-number selfRef">10.1. </a><a href="#name-seeded-prng" class="section-name selfRef">Seeded PRNG</a>
         </h3>
-<div class="alignLeft art-text artwork" id="section-10.1-1">
+<p id="section-10.1-1">For interoperability, the random number generator used for test vectors is implemented using the SeededPRNG defined in Section A.1 of <span>[<a href="#SIGMA" class="cite xref">SIGMA</a>]</span>. For ease of reference, the SeededPRNG API is:<a href="#section-10.1-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-10.1-2">
+<pre>
+class SeededPRNG:
+    def __init__(self, seed: bytes, order: int):
+        pass
+
+    def random_scalar(self) -&gt; Scalar:
+        pass
+</pre><a href="#section-10.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-10.1-3">The following sections contain test vectors for the ARC ciphersuites specified in this document.<a href="#section-10.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="arcv1-p256">
+<section id="section-10.2">
+        <h3 id="name-arcv1-p256">
+<a href="#section-10.2" class="section-number selfRef">10.2. </a><a href="#name-arcv1-p256" class="section-name selfRef">ARCV1-P256</a>
+        </h3>
+<div class="alignLeft art-text artwork" id="section-10.2-1">
 <pre>
 // ServerKey
 x0 = 1008f2c706ae2157c75e41b2d75695c7bf480d0632a1ef447036cafe4cabb02
@@ -3301,7 +3322,7 @@ f4067bb8b3374b159106d0c03e30f9577063de0b52d15d1f5f41328b335ee23d10ca
 7dc4e0717bd9e919e3f6f580e594b3c48b358baa7a320ec9e1019260efe2cbf6e9cb
 a6871ffee3b5566d5e865c729c5e1d48529559
 
-</pre><a href="#section-10.1-1" class="pilcrow">¶</a>
+</pre><a href="#section-10.2-1" class="pilcrow">¶</a>
 </div>
 </section>
 </div>

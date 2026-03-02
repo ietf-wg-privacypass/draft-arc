@@ -116,7 +116,8 @@ Table of Contents
    8.  Alternatives considered
    9.  IANA Considerations
    10. Test Vectors
-     10.1.  ARCV1-P256
+     10.1.  Seeded PRNG
+     10.2.  ARCV1-P256
    11. Acknowledgments
    12. References
      12.1.  Normative References
@@ -1820,10 +1821,23 @@ def VerifyRangeProofHelper(statement, D, nonceCommit, presentationLimit,
 
 10.  Test Vectors
 
-   This section contains test vectors for the ARC ciphersuites specified
-   in this document.
+10.1.  Seeded PRNG
 
-10.1.  ARCV1-P256
+   For interoperability, the random number generator used for test
+   vectors is implemented using the SeededPRNG defined in Section A.1 of
+   [SIGMA].  For ease of reference, the SeededPRNG API is:
+
+   class SeededPRNG:
+       def __init__(self, seed: bytes, order: int):
+           pass
+
+       def random_scalar(self) -> Scalar:
+           pass
+
+   The following sections contain test vectors for the ARC ciphersuites
+   specified in this document.
+
+10.2.  ARCV1-P256
 
    // ServerKey
    x0 = 1008f2c706ae2157c75e41b2d75695c7bf480d0632a1ef447036cafe4cabb02
