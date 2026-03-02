@@ -4,16 +4,11 @@
 import sys
 import json
 
-# Load arc_groups first to set up paths correctly
 load('arc_groups.sage')
-# Load arc.sage to get Client, Server, PresentationState
 load('arc.sage')
 
-try:
-    from sigma.poc.sagelib.test_drng import SeededPRNG
-    from util import to_hex
-except ImportError as e:
-    sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + str(e))
+from sigma.poc.sagelib.test_drng import TestDRNG
+from util import to_hex
 
 def wrap_write(fh, arg, *args):
     line_length = 68
@@ -34,9 +29,9 @@ def write_group_vectors(fh, label, vector):
         write_value(fh, key, vector[key])
 
 def main(path="vectors"):
-    # Pad seed to 32 bytes (SeededPRNG requirement)
+    # Pad seed to 32 bytes (TestDRNG requirement)
     seed = b"test vector seed" + b'\x00' * 16
-    rng = SeededPRNG(seed, G.ScalarField)
+    rng = TestDRNG(seed, G.ScalarField)
     issuer = Server()
     client = Client(rng)
 

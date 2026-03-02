@@ -2,13 +2,12 @@ import sys
 import os
 import hashlib
 
-# IMPORTANT: Add sigma/poc to Python path FIRST, before current directory
-# This ensures we import from sigma/poc/sagelib, not the old local sagelib
+# Add sigma/poc to Python path so we can import from it
 sigma_poc_path = os.path.join(os.getcwd(), 'sigma', 'poc')
 if sigma_poc_path not in sys.path:
     sys.path.insert(0, sigma_poc_path)
 
-# Add current directory to Python path for util module (AFTER sigma/poc)
+# Add current directory to Python path for util module
 if os.getcwd() not in sys.path:
     sys.path.append(os.getcwd())
 

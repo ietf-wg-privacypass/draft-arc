@@ -1,10 +1,9 @@
-# Load sage files directly instead of importing from sagelib
 load('arc_groups.sage')
 load('arc_proofs.sage')
 
 from util import to_hex, to_bytes
-
 from collections import namedtuple
+
 ClientSecrets = namedtuple("ClientSecrets", "m1 m2 r1 r2")
 BlindedRequest = namedtuple("BlindedRequest", "m1_enc m2_enc request_proof")
 BlindedResponse = namedtuple("BlindedResponse", "U enc_U_prime X0_aux X1_aux X2_aux H_aux response_proof")
@@ -42,9 +41,9 @@ class PresentationState(object):
         # This step mutates the state by incrementing next_nonce
         self.next_nonce += 1
 
-        a = rng.random_scalar()
-        r = rng.random_scalar()
-        z = rng.random_scalar()
+        a = G.ScalarField.random(rng)
+        r = G.ScalarField.random(rng)
+        z = G.ScalarField.random(rng)
 
         U = G.scalar_mult(a, self.credential.U)
         U_prime = G.scalar_mult(a, self.credential.U_prime)
@@ -52,7 +51,7 @@ class PresentationState(object):
         m1_commit = G.scalar_mult(self.credential.m1, U) + G.scalar_mult(z, GenH)
 
         # Create Pedersen commitment to the nonce
-        nonce_blinding = rng.random_scalar()
+        nonce_blinding = G.ScalarField.random(rng)
         nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
         generator_T = hash_to_group(self.presentation_context, to_bytes("Tag"))
@@ -116,7 +115,7 @@ class CredentialResponse(object):
 
 class ClientPrivateKey(object):
     def __init__(self, rng, private_info):
-        self.sk = rng.random_scalar()
+        self.sk = G.ScalarField.random(rng)
         self.private_attr = hash_to_scalar(private_info, to_bytes("private"))
         self.pk = G.scalar_mult(self.sk, GenG)
 
@@ -128,10 +127,10 @@ class Client(object):
         self.rng = rng
 
     def request(self, request_context, vectors):
-        m1 = self.rng.random_scalar()
+        m1 = G.ScalarField.random(self.rng)
         m2 = G.ScalarField.field(hash_to_scalar(request_context, to_bytes("requestContext")))
-        r1 = self.rng.random_scalar()
-        r2 = self.rng.random_scalar()
+        r1 = G.ScalarField.random(self.rng)
+        r2 = G.ScalarField.random(self.rng)
 
         m1_enc = G.scalar_mult(m1, GenG) + G.scalar_mult(r1, GenH)
         m2_enc = G.scalar_mult(m2, GenG) + G.scalar_mult(r2, GenH)
@@ -170,10 +169,10 @@ class ServerPrivateKey(object):
 class Server(object):
     @classmethod
     def keygen(cls, rng, vectors):
-        x0 = rng.random_scalar()
-        x1 = rng.random_scalar()
-        x2 = rng.random_scalar()
-        xb = rng.random_scalar()
+        x0 = G.ScalarField.random(rng)
+        x1 = G.ScalarField.random(rng)
+        x2 = G.ScalarField.random(rng)
+        xb = G.ScalarField.random(rng)
         X0 = G.scalar_mult(x0, GenG) + G.scalar_mult(xb, GenH)
         X1 = G.scalar_mult(x1, GenH)
         X2 = G.scalar_mult(x2, GenH)
@@ -195,7 +194,7 @@ class Server(object):
         if CredentialRequestProof.verify(blinded_request) == False:
             raise Exception("request proof verification failed")
 
-        b = rng.random_scalar()
+        b = G.ScalarField.random(rng)
         U = G.scalar_mult(b, GenG)
 
         enc_U_prime = G.scalar_mult(b, (public_key.X0 + G.scalar_mult(private_key.x1, blinded_request.m1_enc) + G.scalar_mult(private_key.x2, blinded_request.m2_enc)))

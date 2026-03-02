@@ -7,25 +7,23 @@ import sys
 load('arc_groups.sage')
 load('range_proof.sage')
 
-try:
-    from sigma.poc.sagelib.test_drng import SeededPRNG
-    from sigma.poc.sagelib.sigma_protocols import LinearRelation
-    from sigma.poc.sagelib.ciphersuite import NISchnorrProofShake128P256
-except ImportError as e:
-    sys.exit("Error loading preprocessed sage files. Try running `make setup && make clean pyfiles`. Full error: " + str(e))
+from sigma.poc.sagelib.test_drng import TestDRNG
+from sigma.poc.sagelib.sigma_protocols import LinearRelation
+from sigma.poc.sagelib.ciphersuite import NISchnorrProofShake128P256
+
 
 def test_valid_nonce_in_range():
     """Test that valid nonces in [0, presentationLimit) verify correctly"""
     print("Test 1: Valid nonces in range...")
 
-    rng = SeededPRNG(b"test_valid_nonce" + b"\x00" * 16, G.ScalarField)
+    rng = TestDRNG(b"test_valid_nonce" + b"\x00" * 16, G.ScalarField)
     presentation_limit = 10
 
     # Test several valid nonces
     test_nonces = [0, 1, 5, 9]  # All in [0, 10)
     for nonce in test_nonces:
         # Generate blinding factor and commitment
-        nonce_blinding = rng.random_scalar()
+        nonce_blinding = G.ScalarField.random(rng)
         nonce = G.ScalarField.field(nonce)
         nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding,GenH)
 
@@ -98,13 +96,13 @@ def test_nonce_equals_limit():
     """Test that nonce == presentationLimit fails verification"""
     print("Test 2: Nonce equals presentation limit...")
 
-    rng = SeededPRNG(b"test_nonce_equals_limit" + b"\x00" * 9, G.ScalarField)
+    rng = TestDRNG(b"test_nonce_equals_limit" + b"\x00" * 9, G.ScalarField)
     presentation_limit = 5
     nonce = 5  # Equal to limit, should fail
 
     try:
         # Generate blinding factor and commitment
-        nonce_blinding = rng.random_scalar()
+        nonce_blinding = G.ScalarField.random(rng)
         nonce = G.ScalarField.field(nonce)
         nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
@@ -170,13 +168,13 @@ def test_nonce_exceeds_limit():
     """Test that nonce > presentationLimit fails verification"""
     print("Test 3: Nonce exceeds presentation limit...")
 
-    rng = SeededPRNG(b"test_nonce_exceeds_limit" + b"\x00" * 8, G.ScalarField)
+    rng = TestDRNG(b"test_nonce_exceeds_limit" + b"\x00" * 8, G.ScalarField)
     presentation_limit = 5
     nonce = 10  # Exceeds limit, should fail
 
     try:
         # Generate blinding factor and commitment
-        nonce_blinding = rng.random_scalar()
+        nonce_blinding = G.ScalarField.random(rng)
         nonce = G.ScalarField.field(nonce)
         nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
@@ -242,7 +240,7 @@ def test_negative_nonce():
     """Test that negative nonce fails verification"""
     print("Test 4: Negative nonce...")
 
-    rng = SeededPRNG(b"test_negative_nonce" + b"\x00" * 13, G.ScalarField)
+    rng = TestDRNG(b"test_negative_nonce" + b"\x00" * 13, G.ScalarField)
     presentation_limit = 5
 
     # In SageMath, we need to handle negative values carefully
@@ -252,7 +250,7 @@ def test_negative_nonce():
 
     try:
         # Generate blinding factor and commitment
-        nonce_blinding = rng.random_scalar()
+        nonce_blinding = G.ScalarField.random(rng)
         # This will compute (-1) * GenG + nonce_blinding * GenH
         # which is equivalent to (order - 1) * GenG + nonce_blinding * GenH
         nonce = G.ScalarField.field(nonce)
@@ -320,12 +318,12 @@ def test_tampered_bit_commitments():
     """Test that tampered D commitments fail verification"""
     print("Test 5: Tampered bit commitments...")
 
-    rng = SeededPRNG(b"test_tampered_D" + b"\x00" * 17, G.ScalarField)
+    rng = TestDRNG(b"test_tampered_D" + b"\x00" * 17, G.ScalarField)
     presentation_limit = 10
     nonce = 5  # Valid nonce
 
     # Generate blinding factor and commitment
-    nonce_blinding = rng.random_scalar()
+    nonce_blinding = G.ScalarField.random(rng)
     nonce = G.ScalarField.field(nonce)
     nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
@@ -357,7 +355,7 @@ def test_tampered_bit_commitments():
     # Tamper with D commitments
     if len(D) > 0:
         tampered_D = list(D)
-        random_scalar = rng.random_scalar()
+        random_scalar = G.ScalarField.random(rng)
         tampered_D[0] = G.scalar_mult(random_scalar, GenG)  # Replace first commitment with random value
 
         # Create verifier statement
@@ -396,12 +394,12 @@ def test_wrong_sum():
     """Test that D commitments that sum to wrong value fail verification"""
     print("Test 6: D commitments sum to wrong value...")
 
-    rng = SeededPRNG(b"test_wrong_sum" + b"\x00" * 18, G.ScalarField)
+    rng = TestDRNG(b"test_wrong_sum" + b"\x00" * 18, G.ScalarField)
     presentation_limit = 10
     nonce = 5  # Valid nonce
 
     # Generate blinding factor and commitment
-    nonce_blinding = rng.random_scalar()
+    nonce_blinding = G.ScalarField.random(rng)
     nonce = G.ScalarField.field(nonce)
     nonce_commit = G.scalar_mult(nonce, GenG) + G.scalar_mult(nonce_blinding, GenH)
 
@@ -432,7 +430,7 @@ def test_wrong_sum():
 
     # Create a different nonce commitment (for nonce 7 instead of 5)
     different_nonce = G.ScalarField.field(7)
-    different_nonce_blinding = rng.random_scalar()
+    different_nonce_blinding = G.ScalarField.random(rng)
     wrong_nonce_commit = G.scalar_mult(different_nonce, GenG) + G.scalar_mult(different_nonce_blinding, GenH)
 
     # Create verifier statement

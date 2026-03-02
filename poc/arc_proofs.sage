@@ -6,9 +6,7 @@ sigma_poc_path = os.path.join(os.getcwd(), 'sigma', 'poc')
 if sigma_poc_path not in sys.path:
     sys.path.insert(0, sigma_poc_path)
 
-# Load arc_groups to get G, GenG, GenH, hash functions, and context_string
 load('arc_groups.sage')
-# Load range_proof to get the range proof helpers
 load('range_proof.sage')
 
 from sagelib.sigma_protocols import LinearRelation

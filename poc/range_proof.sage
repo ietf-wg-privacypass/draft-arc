@@ -65,7 +65,7 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
     partial_sum = Integer(0)
 
     for i in range(len(bases) - 1):
-        s_i = rng.random_scalar()
+        s_i = G.ScalarField.random(rng)
         s.append(s_i)
         partial_sum += bases[i] * s_i
         s2_i = (Integer(1) - b[i]) * s_i
