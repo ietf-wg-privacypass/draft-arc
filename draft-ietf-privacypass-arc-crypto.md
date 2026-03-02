@@ -327,7 +327,7 @@ Given a request context, the process for creating a credential request is as fol
 Inputs:
 - requestContext: Data, context for the credential request
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols specification.
 
 Outputs:
 - request:
@@ -399,7 +399,7 @@ Inputs:
   - requestProof: String (ZKProof), a proof of correct generation
     of m1Enc and m2Enc.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols specification.
 
 Outputs:
 - U: Element, a randomized generator for the response, `b*G`.
@@ -449,7 +449,7 @@ struct {
   uint8 X1Aux[Ne];
   uint8 X2Aux[Ne];
   uint8 HAux[Ne];
-  uint8 responseProof[7*Ns];
+  uint8 responseProof[8*Ns];
 } CredentialResponse
 ~~~
 
@@ -782,7 +782,7 @@ Inputs:
 - m1Enc: Element, first encrypted secret.
 - m2Enc: Element, second encrypted secret.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols specification.
 
 Outputs:
 - proof: String (ZKProof)
@@ -919,7 +919,7 @@ Inputs:
 - X2Aux: Element, auxiliary point for X2.
 - HAux: Element, auxiliary point for generatorH.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols specification.
 
 Outputs:
 - proof: String (ZKProof)
@@ -1140,7 +1140,7 @@ Inputs:
 - nonceCommit: Element, the Pedersen commitment to the nonce.
 - presentationLimit: Integer, the fixed presentation limit.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols specification.
 
 Outputs:
 - presentationProof: ZKProof, a joint proof covering both
@@ -1185,13 +1185,12 @@ def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
   statement.append_equation(genTVar,
     [(m1Var, tagVar), (nonceVar, tagVar)])
   # 5. Add range proof constraints
-  (statement, D) = MakeRangeProofHelper(statement, nonce,
-    nonceBlinding, presentationLimit, genGVar, genHVar)
+  (statement, D, rangeWitness) = MakeRangeProofHelper(statement, nonce,
+    nonceBlinding, presentationLimit, genGVar, genHVar, rng)
 
   # Build witness vector matching the scalar allocations
   witness = [credential.m1, z, -r, nonce, nonceBlinding]
-  # Add range proof witnesses (b[i], s[i], s2[i] for each bit)
-  # These are added by MakeRangeProofHelper
+  witness.extend(rangeWitness)
 
   session_id = contextString + "CredentialPresentation"
   prover = NISchnorrProofShake128P256(session_id, statement)
@@ -1382,8 +1381,8 @@ range proof. This helper function is called from within `MakePresentationProof` 
 range proof constraints to the presentation proof statement.
 
 ~~~
-(prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
-                                   genGVar, genHVar)
+(prover, D, rangeWitness) = MakeRangeProofHelper(prover, nonce, nonceBlinding,
+                                                  presentationLimit, genGVar, genHVar, rng)
 
 Inputs:
 - prover: Prover statement to which constraints will be added
@@ -1392,10 +1391,15 @@ Inputs:
 - presentationLimit: Integer, the maximum value of the range (exclusive).
 - genGVar: Integer, variable index for generator G
 - genHVar: Integer, variable index for generator H
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocols specification.
 
 Outputs:
 - prover: Modified prover statement with range proof constraints added
 - D: [Element], array of commitments to the bit decomposition of nonceCommit
+- rangeWitness: [Scalar], witness values for the range proof scalars, in the
+  order they were allocated: b[0], ..., b[n-1], s[0], ..., s[n-1],
+  s2[0], ..., s2[n-1]
 
 Parameters:
 - G: Group
@@ -1451,7 +1455,13 @@ def MakeRangeProofHelper(statement, nonce, nonceBlinding, presentationLimit,
     # D[i] = b[i] * D[i] + s2[i] * generatorH (proves b[i] is in {0,1})
     statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], genHVar)])
 
-  return (statement, D)
+  # Build witness array: all b values, then all s values, then all s2 values
+  rangeWitness = []
+  rangeWitness.extend(b)
+  rangeWitness.extend(s)
+  rangeWitness.extend(s2)
+
+  return (statement, D, rangeWitness)
 ~~~
 
 ### Range Proof Verification
@@ -1628,7 +1638,6 @@ To ensure no information is leaked during protocol execution, all operations tha
 
 # Alternatives considered
 
-
 ARC uses the MACGGM algebraic MAC as its underlying primitive, as detailed in {{KVAC}} and {{REVISITING_KVAC}}. This offers the benefit of having a lower credential size than MACDDH, which is an alternative algebraic MAC detailed in {{KVAC}}.
 
 The BBS anonymous credential scheme, as detailed in {{BBS}} and its variants, is efficient and publicly verifiable, but requires pairings for verification. This is problematic for adoption because pairings are not supported as widely in software and hardware as non-pairing elliptic curves.
@@ -1641,7 +1650,11 @@ This document has no IANA actions.
 
 # Test Vectors
 
-This section contains test vectors for the ARC ciphersuites specified in this document.
+## Seeded PRNG
+
+For interoperability, the random number generator used for test vectors is implemented using the SeededPRNG defined in Section A.1 of {{SIGMA}}.
+
+The following sections contain test vectors for the ARC ciphersuites specified in this document.
 
 {::include ./poc/vectors/allVectors.txt}
 

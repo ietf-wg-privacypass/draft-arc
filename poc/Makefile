@@ -14,10 +14,6 @@ sagelib/%.py: %.sage
 	@sage --preparse $<
 	@mv $<.py $@
 
-setup:
-	cp h2c/poc/hash_to_field.py .
-	cp h2c/poc/*.sage .
-
 test: pyfiles
 	sage test_range_proof.sage
 	sage test_arc.sage
