@@ -1652,14 +1652,7 @@ This document has no IANA actions.
 
 ## Seeded PRNG
 
-For interoperability, the random number generator used for test vectors is implemented using the SeededPRNG defined in Section A.1 of {{SIGMA}}. For ease of reference, the SeededPRNG API is:
-
-    class SeededPRNG:
-        def __init__(self, seed: bytes, order: int):
-            pass
-
-        def random_scalar(self) -> Scalar:
-            pass
+For interoperability, the random number generator used for test vectors is implemented using the SeededPRNG defined in Section A.1 of {{SIGMA}}.
 
 The following sections contain test vectors for the ARC ciphersuites specified in this document.
 
