@@ -278,7 +278,8 @@ class PresentationProof(object):
         (statement, D, range_witness) = MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, gen_G_var, gen_H_var, nonce_commit_var, nonce_commit, rng)
 
         # Combine witnesses: presentation (5) + range (3*k where k is number of bits)
-        witness = presentation_witness + range_witness
+        witness = presentation_witness
+        witness.extend(range_witness)
 
         # Create prover with session ID and statement
         session_id = context_string + b"CredentialPresentation"
