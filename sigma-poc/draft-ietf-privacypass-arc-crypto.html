@@ -2595,11 +2595,11 @@ def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
   statement.append_equation(genTVar,
     [(m1Var, tagVar), (nonceVar, tagVar)])
   # 5. Add range proof constraints
-  (statement, D) = MakeRangeProofHelper(statement, nonce,
+  (statement, D, rangeWitness) = MakeRangeProofHelper(statement, nonce,
     nonceBlinding, presentationLimit, genGVar, genHVar, rng)
 
   # Build witness vector matching the scalar allocations
-  witness = [credential.m1, z, -r, nonce, nonceBlinding]
+  witness = [credential.m1, z, -r, nonce, nonceBlinding] + rangeWitness
 
   session_id = contextString + "CredentialPresentation"
   prover = NISchnorrProofShake128P256(session_id, statement)
@@ -2809,8 +2809,8 @@ range proof. This helper function is called from within <code>MakePresentationPr
 range proof constraints to the presentation proof statement.<a href="#section-5.4.1-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-5.4.1-2">
 <pre>
-(prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
-                                   genGVar, genHVar, rng)
+(prover, D, rangeWitness) = MakeRangeProofHelper(prover, nonce, nonceBlinding,
+                                                  presentationLimit, genGVar, genHVar, rng)
 
 Inputs:
 - prover: Prover statement to which constraints will be added
@@ -2825,6 +2825,9 @@ Inputs:
 Outputs:
 - prover: Modified prover statement with range proof constraints added
 - D: [Element], array of commitments to the bit decomposition of nonceCommit
+- rangeWitness: [Scalar], witness values for the range proof scalars, in the
+  order they were allocated: b[0], ..., b[n-1], s[0], ..., s[n-1],
+  s2[0], ..., s2[n-1]
 
 Parameters:
 - G: Group
@@ -2880,7 +2883,9 @@ def MakeRangeProofHelper(statement, nonce, nonceBlinding, presentationLimit,
     # D[i] = b[i] * D[i] + s2[i] * generatorH (proves b[i] is in {0,1})
     statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], genHVar)])
 
-  return (statement, D)
+  # Build witness array: all b values, then all s values, then all s2 values
+  rangeWitness = b + s + s2
+  return (statement, D, rangeWitness)
 </pre><a href="#section-5.4.1-2" class="pilcrow">¶</a>
 </div>
 </section>
