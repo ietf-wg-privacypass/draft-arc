@@ -5,9 +5,9 @@
 Network Working Group                                             C. Yun
 Internet-Draft                                                C. A. Wood
 Intended status: Informational                               Apple, Inc.
-Expires: 31 August 2026                                 A. Faz-Hernandez
+Expires: 3 September 2026                               A. Faz-Hernandez
                                                               Cloudflare
-                                                        27 February 2026
+                                                            2 March 2026
 
 
             Anonymous Rate-Limited Credentials Cryptography
@@ -57,7 +57,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 31 August 2026.
+   This Internet-Draft will expire on 3 September 2026.
 
 Copyright Notice
 
@@ -116,7 +116,8 @@ Table of Contents
    8.  Alternatives considered
    9.  IANA Considerations
    10. Test Vectors
-     10.1.  ARCV1-P256
+     10.1.  Seeded PRNG
+     10.2.  ARCV1-P256
    11. Acknowledgments
    12. References
      12.1.  Normative References
@@ -413,7 +414,7 @@ Table of Contents
  Inputs:
  - requestContext: Data, context for the credential request
  - rng: a cryptographically secure random number generator, as defined
-   in the Sigma Protocol spec {{SIGMA}}.
+   in the Sigma Protocols specification.
 
  Outputs:
  - request:
@@ -483,7 +484,7 @@ Table of Contents
      - requestProof: String (ZKProof), a proof of correct generation
        of m1Enc and m2Enc.
    - rng: a cryptographically secure random number generator, as defined
-     in the Sigma Protocol spec {{SIGMA}}.
+     in the Sigma Protocols specification.
 
    Outputs:
    - U: Element, a randomized generator for the response, `b*G`.
@@ -532,7 +533,7 @@ Table of Contents
      uint8 X1Aux[Ne];
      uint8 X2Aux[Ne];
      uint8 HAux[Ne];
-     uint8 responseProof[7*Ns];
+     uint8 responseProof[8*Ns];
    } CredentialResponse
 
    The length of this encoded response structure is Nresponse = 6*Ne +
@@ -877,7 +878,7 @@ struct {
    - m1Enc: Element, first encrypted secret.
    - m2Enc: Element, second encrypted secret.
    - rng: a cryptographically secure random number generator, as defined
-     in the Sigma Protocol spec {{SIGMA}}.
+     in the Sigma Protocols specification.
 
    Outputs:
    - proof: String (ZKProof)
@@ -1006,7 +1007,7 @@ def VerifyCredentialRequestProof(request):
    - X2Aux: Element, auxiliary point for X2.
    - HAux: Element, auxiliary point for generatorH.
    - rng: a cryptographically secure random number generator, as defined
-     in the Sigma Protocol spec {{SIGMA}}.
+     in the Sigma Protocols specification.
 
    Outputs:
    - proof: String (ZKProof)
@@ -1220,7 +1221,7 @@ Inputs:
 - nonceCommit: Element, the Pedersen commitment to the nonce.
 - presentationLimit: Integer, the fixed presentation limit.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols specification.
 
 Outputs:
 - presentationProof: ZKProof, a joint proof covering both
@@ -1265,13 +1266,12 @@ def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
   statement.append_equation(genTVar,
     [(m1Var, tagVar), (nonceVar, tagVar)])
   # 5. Add range proof constraints
-  (statement, D) = MakeRangeProofHelper(statement, nonce,
-    nonceBlinding, presentationLimit, genGVar, genHVar)
+  (statement, D, rangeWitness) = MakeRangeProofHelper(statement, nonce,
+    nonceBlinding, presentationLimit, genGVar, genHVar, rng)
 
   # Build witness vector matching the scalar allocations
   witness = [credential.m1, z, -r, nonce, nonceBlinding]
-  # Add range proof witnesses (b[i], s[i], s2[i] for each bit)
-  # These are added by MakeRangeProofHelper
+  witness.extend(rangeWitness)
 
   session_id = contextString + "CredentialPresentation"
   prover = NISchnorrProofShake128P256(session_id, statement)
@@ -1464,8 +1464,8 @@ def ComputeBases(presentationLimit):
    function is called from within MakePresentationProof to add range
    proof constraints to the presentation proof statement.
 
-(prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
-                                   genGVar, genHVar)
+(prover, D, rangeWitness) = MakeRangeProofHelper(prover, nonce, nonceBlinding,
+                                                  presentationLimit, genGVar, genHVar, rng)
 
 Inputs:
 - prover: Prover statement to which constraints will be added
@@ -1474,10 +1474,15 @@ Inputs:
 - presentationLimit: Integer, the maximum value of the range (exclusive).
 - genGVar: Integer, variable index for generator G
 - genHVar: Integer, variable index for generator H
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocols specification.
 
 Outputs:
 - prover: Modified prover statement with range proof constraints added
 - D: [Element], array of commitments to the bit decomposition of nonceCommit
+- rangeWitness: [Scalar], witness values for the range proof scalars, in the
+  order they were allocated: b[0], ..., b[n-1], s[0], ..., s[n-1],
+  s2[0], ..., s2[n-1]
 
 Parameters:
 - G: Group
@@ -1533,7 +1538,13 @@ def MakeRangeProofHelper(statement, nonce, nonceBlinding, presentationLimit,
     # D[i] = b[i] * D[i] + s2[i] * generatorH (proves b[i] is in {0,1})
     statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], genHVar)])
 
-  return (statement, D)
+  # Build witness array: all b values, then all s values, then all s2 values
+  rangeWitness = []
+  rangeWitness.extend(b)
+  rangeWitness.extend(s)
+  rangeWitness.extend(s2)
+
+  return (statement, D, rangeWitness)
 
 5.4.2.  Range Proof Verification
 
@@ -1810,197 +1821,149 @@ def VerifyRangeProofHelper(statement, D, nonceCommit, presentationLimit,
 
 10.  Test Vectors
 
-   This section contains test vectors for the ARC ciphersuites specified
-   in this document.
+10.1.  Seeded PRNG
 
-10.1.  ARCV1-P256
+   For interoperability, the random number generator used for test
+   vectors is implemented using the SeededPRNG defined in Section A.1 of
+   [SIGMA].
+
+   The following sections contain test vectors for the ARC ciphersuites
+   specified in this document.
+
+10.2.  ARCV1-P256
 
    // ServerKey
-   x0 = 3338fa65ec36e0290022b48eb562889d89dbfa691d1cde91517fa222ed7ad36
-   4
-   x1 = f9db001266677f62c095021db018cd8cbb55941d4073698ce45c405d1348b7b
+   x0 = 1008f2c706ae2157c75e41b2d75695c7bf480d0632a1ef447036cafe4cabb02
    1
-   x2 = 350e8040f828bf6ceca27405420cdf3d63cb3aef005f40ba51943c802687796
-   3
-   xb = fd293126bb49a6d793cd77d7db960f5692fec3b7ec07602c60cd32aee595dff
+   x1 = 526e009578f6f25fdec992343f09f5e6c58489c31fcf8a934bbaf85797121bd
    d
-   X0 = 0232b5e93dc2ff489c20a986a84757c5cc4512f057e1ea92011a26d3ad2c562
-   88d
-   X1 = 03c413230a9bd956718aa46138a33f774f4c708d61c1d6400d404243049d4a3
-   1dc
-   X2 = 02db00f6f8e6d235786a120017bd356fe1c9d09069d3ac9352cc9be10ef1505
-   a55
+   x2 = 549075ccd3d1c36b3546725c43e71943414409a23b980b2c47a3fc2b9c37679
+   b
+   xb = 7276533ce3c89f04a007c2e8aa7d2e3b36829d0eaab5631347d8336c2da09a8
+   e
+   X0 = 03bad54cc48293ef3472ac1ada55c9c9fdb3eb99ee47369bbe1d3ce46b300cd
+   7b3
+   X1 = 02a0323862a05707d76862bfa8477eed468441ceae14c8fb1659e0b3020b8a2
+   4e1
+   X2 = 031d16ef08ede5a347e94a8eca071bec7bedb9d8ba943d24bde912a4e1578e5
+   29b
 
    // CredentialRequest
-   Blinding_0 = e699140babbe599f7dd8f6e3e8f615e5f201d1c2b0bc2f821f19e80
-   a0a0e1e7b
-   Blinding_1 = b78e57df8f0a95d102ff12bbb97e15ed35c23e54f9b4483d30b7677
-   2ee60d886
-   Blinding_2 = 42252210dd60ddbbf1a57e3b144e26dd693b7644a9626a8c36896ed
-   e53d12930
-   Blinding_3 = f5a4bbcf14e55e357df9f5ccb5ded37b2b14bc2e1a68e31f86416f0
-   606ee75d1
    request_context = 74657374207265717565737420636f6e74657874
-   m1 = eedfe7939e2382934ab5b0f76aae44124955d2c5ebf9b41d88786259c34692d
-   2
+   m1 = 141c4ca5e614af8e5e323eb47a7e7673ebb67caf49dfa8e109f45f231227f7a
+   0
    m2 = 911fb315257d9ae29d47ecb48c6fa27074dee6860a0489f8db6ac9a486be6a3
    e
-   r1 = 008035081690bfde3b1e68b91443c22cc791d244340fe957d5aa44d7313740d
-   f
-   r2 = d59c5e6ff560cc597c2b8ca25256c720bceca2ab03921492c5e9e4ad3b55800
-   2
-   m1_enc = 03b8f11506a5302424143573e087fa20195cb5e893a67ef354eae3a78e2
-   63c54e4
-   m2_enc = 03f1ae4d7b78ba8030bd63859d4f4a909395c52bda34716b6620a2fdd52
-   b336fc9
-   proof = e098582f40a23bd1a402356ffe4df3928449babcfd7e3b53f8276e3e7fae
-   cda39a9fdf6aada14315f651250f1374f308f13c9fd5c0e4278ee0d1e75940391e63
-   e0a7f63fb3fde10bdf14fb8ff2e760394e2456d736f01115c110a19b8cf2a885dd26
-   ed676e8c525ab9f89a358a86f1f6e668971b1e362000334681a24aa0f9c5b6882bb9
-   22dce84a23c2067e18c3c089c38eead30283e5d69dae36e5e57dc84d
+   r1 = 5c183d2dea942eb2780afb90cfd94983ae6575d60e350021c8c93008ac50397
+   3
+   r2 = 044d4a5b5daf00dd1fb4444ca2f8c3facc95d537d5ad0e0a2815c912e98a431
+   d
+   m1_enc = 033fe5d950712f711e5d292d68f804fad4c35fb7f3f1866516448647d4a
+   ab12590
+   m2_enc = 026502a833ed1d972ee27175e750b1719adee12726c653125887c0d32b1
+   f3747ab
+   proof = 2a088673e302502a3dc80d6100a1bb709083ac7b31da34f9a7c52e7cfeaa
+   2ea30b7341133086e64b79dfc6cdac9f348ddbed0b087746f0167ea238d3ddf17e61
+   3880b73e85f499c7eddc6555355ea71487b49862400091b5b32cb219d7104f571306
+   bc6f2487bab299bb2e9a1078dee94d83b6536ed570f8114ee9c97b8b602bfacbeb37
+   64f6a22915a19c24895a6bf7048c663337f7690f0182a1f866586d9e
 
    // CredentialResponse
-   Blinding_0 = d7ed72750b6d366ed0febdc539b52d89434f468a578c59d7ca9015b
-   7da240ad6
-   Blinding_1 = 91eedfb168c556ff5ca3b89d047f482c9279b47f584aab6c7f895f7
-   674251771
-   Blinding_2 = 886ea898637537c9030595c187623157f9cc5c18da03fb49a5a36b7
-   e38849f3a
-   Blinding_3 = 01df712887463dac146580d3357cb9dc02bdbddce141c952c094663
-   9ab515309
-   Blinding_4 = 2dc0d56bd8177de70c1883e08ceb0d712acbc3b36c950a756fbd80e
-   b81718d85
-   Blinding_5 = 054049f980767d610023f178e0edb4a11a1dba90f1f93e39e95a720
-   e9d3c8d2d
-   Blinding_6 = bf66d646c2b18dd604def14b6746314d91b4b49831ce8937dfd15ad
-   72be954e9
-   b = 95bcf45150a61f5c44a6cfbf343cd9e0f593f127b6f49bec0f9b20f0550504a2
-   U = 0349e4a381882bf7d005eec543bd3e1f2799458972086b91701d784e099c5f01
-   4b
-   enc_U_prime = 0205f3224dafbce814bc740d69715ccc0b6d4bf52e9b983f13b4c3
-   4dcfd75cc86a
-   X0_aux = 03583e734076fe750c26a211246a763be05ff4ad9c935d774bfe9b4f95f
-   b4d886d
-   X1_aux = 02ba0d01fb456fa0c7789878156b2a276c9379fb9f6c8c3bc25c3e05789
-   b00fb2c
-   X2_aux = 030b3360e8250f1a8c3acc8f97fdc7c93c0371716b1c709ef6d4aaf54d5
-   43ea45e
-   H_aux = 03f234f46994a880ee24ae235d70c01104f1959e71aa080fcf60d58af26a
-   54907f
-   proof = 7a920ec29277897f132d93f4e5209cac5cd6a327f2c33fb4aaa58ae03e95
-   0d03c5823afdfc48940026d8d596163dc69878611402ae18156309aae26245d1fb4d
-   816c62558828bb7e2f7957553ac87e37387ff5ab294b478800d0c4f3948bc77a4c7a
-   e3d7e37ce2288c01dd42b0dc41f87ee4b4e71602f57c5312d532169729250289f1ed
-   e6a29fd5199c2dd5197e94730e5d1a0f655056c0c2ccacfd3b1df4519a4a5f0886ad
-   7dbdabfb158f26672f137fe1b5d95b476756342a35393e872dd4b50b86c6d82c75a4
-   12a76567caad14a817ec0438b6a6d9e07e79aa04aee6a90bf471e5363f6b30402d17
-   f075fc8b5bbc087abad9534b10146bb4205810a8d932
+   b = 9ac9d836ef405f4c6c1de4de18d210c929a8dc786c95e3eac3a828cc19e1636e
+   U = 021cf52318c97c33472cc8fb42a5b5a774f83c3b36e6c782209d53e5945d99a4
+   93
+   enc_U_prime = 02ae23020d5427c7f785a72d77c24997f955e66ab7c378c334b7c2
+   59dabdf572d7
+   X0_aux = 031523abe64e436e65e592abdae322dc556fcbea707757e18d4160ba57d
+   574cd87
+   X1_aux = 023cc3b53807f6e0082b675794ae9f6b370483ca5a3e6d688c3b81f2fdb
+   6d4ec00
+   X2_aux = 0329dc7c93f8a231a1f16ec69f0fba446e022ce69945b20f37386a7fda3
+   e573b79
+   H_aux = 0389746891b6dbf062511619eae7d72ae87630bea1e277a925708fdfef83
+   63a1d4
+   proof = ec342aee0d481435379ea6bbe919edd5d2eb9c12198a083e0e899da1f14d
+   bc46a8048f5a12c5cae21e5f5949fe08d1c15c266c63544615400def4ce9a6cf8aee
+   32052ced26e7a9d854f2c45ea23ffea0f6bf977f6155d412991abc0e2d1ad8350412
+   9c1ac8319b2a45940c52c4b41bde80969313641b9cb727445e20b44d0ea884e9b180
+   cd152442883038b97d72772201f281d76a18d22e374bd989accd7654806739916242
+   8c4d25daf1b7f68f3580a38cc4564a88f28494649064500f06c5b946dde032a389f8
+   fe337605627ce91a92c20db911100a2c7c42ae15fde5a5cbd9d078b819a804235931
+   92c40d70ce77f1a6d377770fe5c05781782bd1eaa43f
 
    // Credential
-   m1 = eedfe7939e2382934ab5b0f76aae44124955d2c5ebf9b41d88786259c34692d
-   2
-   U = 0349e4a381882bf7d005eec543bd3e1f2799458972086b91701d784e099c5f01
-   4b
-   U_prime = 03f5b1db92ae68243a76d2b7bf720f52ebe20f940c29284d72e3043edb
-   1126e605
-   X1 = 03c413230a9bd956718aa46138a33f774f4c708d61c1d6400d404243049d4a3
-   1dc
+   m1 = 141c4ca5e614af8e5e323eb47a7e7673ebb67caf49dfa8e109f45f231227f7a
+   0
+   U = 021cf52318c97c33472cc8fb42a5b5a774f83c3b36e6c782209d53e5945d99a4
+   93
+   U_prime = 02646199272c28911165b4d1c5f4ffbd8a83f686948fd4c7250e28c81d
+   bfecd354
+   X1 = 02a0323862a05707d76862bfa8477eed468441ceae14c8fb1659e0b3020b8a2
+   4e1
 
    // Presentation1
-   Blinding_0 = e520caf9d5540af687c624b70298cf6526854a9c08b11946b07db49
-   6e4a006ce
-   Blinding_1 = e66d65912d990848d4b1531fead70a2bb1b05d306d3bab855fa8dd5
-   63aa0b01c
-   Blinding_2 = d9447d0cea53e8c6ef9b0f798d50e1cf31f0cd1315105ecf6bbf581
-   7d560571f
-   Blinding_3 = 1b8d430f35fd99c6d8a666165c284049ccadc483584f4a4fbf2cc62
-   7a82783cd
-   Blinding_4 = 3f8f4fda758b6ed060076d165492520fcbad558582837939baf99d5
-   2e8c7cd9c
-   Blinding_5 = 409dd5280c655aaf9dbde20491a9c0324d51768b433dced9045dfa3
-   3800b216e
-   Blinding_6 = 1733c8ea8c4af97e8e685dd5a9f74320a4cb1766d6da8fd90b358ce
-   f2141635e
-   Blinding_7 = 8fcd32796d29f6097200ae278ede1e3e38491cddd009deb3fb3f72a
-   27f018c76
    presentation_context = 746573742070726573656e746174696f6e20636f6e746
    57874
-   a = 9eae9ce883de40e99aa0fa098c1010fc57f58b8efaaf25f227459a4ddebfcba4
-   r = 2dfb016bfc2b35997b081777ac86c0bee2ea4018272f33aa6a79cc9f03af3cf9
-   z = f77f4f4ed706428db0abe222a617c57fdeb62e6214bd4d9ff5d27643072495cd
-   U = 03e7989352bc30776e8654e1c91269257709186599ccbd5b0ec18116a562ac77
-   b6
-   U_prime_commit = 023ba477a2d790d03ad332d94a55407983bbb9e35366162e1b6
-   dcb376907534b6d
-   m1_commit = 02f955c9ea4ad0f408c387f1e5c4841608f844e85e355e76f7fa3669
-   11c3bd60e0
+   a = a3c469d2d55062b463b17f45acd2fb17c038b18df4c8d6c9c745866ba961de9a
+   r = 54925f70e9ec2128114c6ae8bfc6e1a2914a8fdd383e5ff03d8c2992edd081a9
+   z = 9ed3c3ddb1b5ff64e55b1d0a4f58eee67351fea7de16baf644e80f4d0949cf5f
+   U = 0216af8901c1ad38a703bf9003fabea440b411b4f072fd23b5254cb17d1b5bf3
+   3d
+   U_prime_commit = 03140f8e6f6c5eab3d03a7fba5d542362a9bc00a89d80caa505
+   1b4e4446b0b01f3
+   m1_commit = 0214d0297c21120d621cc6fed75852569de3cbf0bd9f5a8a812cf6b0
+   24bf51e627
    nonce = 0x0
-   nonce_blinding = 5141094d4aa4e1a88364bafec2cf18928b72868633ee2229dd4
-   b3a58cf7756f3
-   nonce_commit = 02d50b2b283c32e006f8c16c6381811f3acd8aa8dc33e5be9e132
-   5a89c95b381ac
-   tag = 031a774fd87a8f18f6420bea43cf5425e7426eec8ba7b8df5c13dc05f10ec6
-   52d9
-   D_0 = 02d50b2b283c32e006f8c16c6381811f3acd8aa8dc33e5be9e1325a89c95b3
-   81ac
-   proof = 02d50b2b283c32e006f8c16c6381811f3acd8aa8dc33e5be9e1325a89c95
-   b381ace37ceecc5f57a815dd6fcc8d0bc35d074d17049fb05965d2e2bd2ba2496f16
-   24532b70c3108b18724116d391ff8bef2919545738d84d768e656e07aeaac49a9f50
-   6815376083a47e06ba0110cee2528f3bd814172c72a9237be04cddf44046d87a81a0
-   2604498c9bdcec69daba122af7d0373f8f1d6114dfbefafcac002f8e991b8d430f35
-   fd99c6d8a666165c284049ccadc483584f4a4fbf2cc627a82783cdd1e1fb2a9c21ed
-   1b05b754e0c7d36ab09fd986672b9b6a43cdc5ee30d07efe84409dd5280c655aaf9d
-   bde20491a9c0324d51768b433dced9045dfa33800b216ea986743ab2e177c9341845
-   a01d385bc178f748487ff280e31e01ddcd08f89446221fddca93c0745317b095f202
-   1f36df4f8e5311d20a31391a51f8bd6a55980d
+   nonce_blinding = ed8b643e3c8ba74cc417b5bbfc4f42bee6dcd2d6c5ea48fb227
+   3afec7b6505a4
+   nonce_commit = 032326abcd4eb2fd1a47053ec9ce1aab3ee91e98373d610e9752a
+   7d16a5c1e38d8
+   tag = 0281428e61688f4e7989dbe8dab170705c81b294c4a73b785a0754712fc968
+   eb40
+   D_0 = 032326abcd4eb2fd1a47053ec9ce1aab3ee91e98373d610e9752a7d16a5c1e
+   38d8
+   proof = 032326abcd4eb2fd1a47053ec9ce1aab3ee91e98373d610e9752a7d16a5c
+   1e38d8946f5f0b44e34f826b41ec59a4e2dcfaa826b8a39cc278e10b1b02b5dbaafd
+   b6e789639885a8d2d69269a9fea55830f1d7e1fd0a771183b7b4eebe5e03e0c0255d
+   1ba614de7e31d4f46eb93a24e0ffe9864b002527109a516a10dc1ad718b8d984efd1
+   6ab245d7a5dfabe2d0027e23796981422b19c2821a831cb46a8e9b8b566bbdb55b64
+   9021bf2f777b9130c2e375f560eee4691d04bd38e9571d9451257858d9128002a2f8
+   908d7e4521510a2185244fa533e2502b61e502fd157d974f91acc4f2ba0d724f2bfd
+   182d5df4d038e74b5c35cc7c4aa7622c2682e040877eebcc18fe822cc6abab5d3adc
+   9db836991d3d1ecf699658245b8b0756946ba0d7756b433aae3b476ccbc2186b2fe2
+   ecc2fe0da30df264802829254df8196a8307f0
 
    // Presentation2
-   Blinding_0 = b68cd5b8b8d5115ad17f76297ed84c3169b1443abb42264b87e0a3a
-   1616fb816
-   Blinding_1 = 546bbc5ddad7950b4bb0bb3677376d3daf45eb7649285bbe6a15871
-   7365aea1d
-   Blinding_2 = 05e51f42b2cc6706d105094825bb676babd0c0f04a644042711674c
-   15effb280
-   Blinding_3 = eeae9c7e13999d04c0694f9aa87b63b2a6e0d485b552939252f7e95
-   51da8d3cd
-   Blinding_4 = c6847709cff95cc66269897532a55020a42e0b5ef9d8020e9c503f8
-   6d3436d3d
-   Blinding_5 = be7ac96e0d07a97271563eb4f428701bb0fac3aa04c926637da21a7
-   63bdadc34
-   Blinding_6 = 757c14d0ed5c1bf1b622173b4e9e69cd558d2dcede9a76eef686a5e
-   89af62710
-   Blinding_7 = b1c0afa8e09abad10a4fea1a48542b9ffc5df785cb993d204de0a54
-   90ca6ff46
    presentation_context = 746573742070726573656e746174696f6e20636f6e746
    57874
-   a = cb6ac1b1658fd0edbe66db0b47489425824b0c2d2c8cae85012b9027995e55d9
-   r = a2756725298fdca322802a070e317e8ab7505bdec7a36c3529a0ee9260710061
-   z = e4b6f94a40102d58505660d7fea73947e3e621fda076076c3a22dd4ff4290b5b
-   U = 02a3019dab1986921ac248e6260933b9c5adc390c0350eed5919770a9adcc0cc
-   2d
-   U_prime_commit = 03e68da2708772d8b3f15c0ce862cf517de9be4c435db15869e
-   f717464ffa39904
-   m1_commit = 028a0e1d3fdff513c49c64629baf1f3fa2d8c087fdfe632089a34495
-   7f78d26311
+   a = ae14ddaf96907f2fee72069664e1883fee4582cefcfbb2f3fae380c317018ab2
+   r = f994bf66d0c7943ce97331da186e231281b691eb271c7c524ff9f8bc7804b41d
+   z = fa27efc5066bca91121642d629477eb1c7812fa9c473b30dea3eaba8a1731568
+   U = 0357e53851143e7cc34311bdba0d44d4d3c9192180434ce247b8766232b5de1e
+   08
+   U_prime_commit = 02bad8dc9b0179dff7a1d63d03d92810520085cbc41b65b667d
+   3cbe2203eb7c544
+   m1_commit = 02455589d2b92a24e49ff8c2e8287f6eeb05cbfddc16aba66dfe9ab9
+   7702bc3c35
    nonce = 0x1
-   nonce_blinding = 9209d3c54556821a00770474e9c9ebddb15a617423c002f121b
-   27df1c9f36b39
-   nonce_commit = 025661d97a7c203bc3a1d29eacb338cd0c36de4b7b865428791a6
-   0f9f0df1bc468
-   tag = 03084fe6fff0ecc7c33ef5c49b492dda38083f52e9a2b70b88f3d4b4ba7b50
-   afba
-   D_0 = 025661d97a7c203bc3a1d29eacb338cd0c36de4b7b865428791a60f9f0df1b
-   c468
-   proof = 025661d97a7c203bc3a1d29eacb338cd0c36de4b7b865428791a60f9f0df
-   1bc468da7f0320982023f95d1e8f5ae2e335ddef80eb007ecb8d7d254d09a31b782e
-   e60fa387001e9ab16ad240eb013d07c37332867843eebc57b188cca6eff3b8203290
-   d181f837af1283579f9bc69cb42fe49fe952639fb6c932449309d21ae36a7468592b
-   f9948bf9ee06a7901f707190efdd18e97b1a7c70a6ce8b7d8a78554dc1142f995d7b
-   79790b634ac03fc5982dd4b75fe985368706152daadfb20230a4e72768c1e85988c6
-   4f1b082f203d40e91d1429961a668cf32cdff270c333e35c21e3fbc64c74e7857a14
-   37af5a11453a3d7e60d3572d15376b4c0edb961cc5d29fd6605fae76eb857b6ec0bc
-   e6593a02c9826fb337f26706922de2a1e7f7f93b45b1c0afa8e09abad10a4fea1a48
-   542b9ffc5df785cb993d204de0a5490ca6ff46
+   nonce_blinding = 90b8387fe4145c2d47a0f042c26119939bcbcc8c2c32f81d103
+   4db3958b9af39
+   nonce_commit = 0363d6bd2969b64a42354ba896be33a4abce479261d7dec0001fa
+   1af7fbdeecb41
+   tag = 02ad6c293325d0c2c388c8b2240b6d8ab9e52395297ef5921fb78ace6a1274
+   b03b
+   D_0 = 0363d6bd2969b64a42354ba896be33a4abce479261d7dec0001fa1af7fbdee
+   cb41
+   proof = 0363d6bd2969b64a42354ba896be33a4abce479261d7dec0001fa1af7fbd
+   eecb417c59300e0aafb0d58e3f85423030401dabe5dd39566924f07e99cae5b3be62
+   f45e736890857cfe0950c22c93c52d56e6ade5f5a1c1d486e9261e7788b745438701
+   15370c46e62e376b17844a287bbb6722dc5e5848fdbd8d19d259ec1cec83851a1ef4
+   a21dadefeef3f5222eb19361facbb2ec3ba640aef22cd5700a17ea17fc3ece772f5b
+   5cca1e119bf32cfa7f3459c2184d6d8c777d281c91b416187ee949c9557fece8afb0
+   ac785c7b8c4854e622f8b005daf5c0682cfdc2d900150087bae0090d44b7bac130c7
+   f4067bb8b3374b159106d0c03e30f9577063de0b52d15d1f5f41328b335ee23d10ca
+   7dc4e0717bd9e919e3f6f580e594b3c48b358baa7a320ec9e1019260efe2cbf6e9cb
+   a6871ffee3b5566d5e865c729c5e1d48529559
 
 11.  Acknowledgments
 
