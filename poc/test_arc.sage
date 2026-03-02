@@ -17,9 +17,6 @@ def wrap_write(fh, arg, *args):
         if hunk and len(hunk.strip()) > 0:
             fh.write(hunk + "\n")
 
-def write_blob(fh, name, blob):
-    wrap_write(fh, name + ' = ' + to_hex(blob))
-
 def write_value(fh, name, value):
     wrap_write(fh, name + ' = ' + value)
 

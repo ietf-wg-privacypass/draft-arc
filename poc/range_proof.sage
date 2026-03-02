@@ -106,7 +106,10 @@ def MakeRangeProofHelper(statement, nonce, nonce_blinding, presentation_limit, g
         statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], gen_H_var)])
 
     # Build witness array: all b values, then all s values, then all s2 values
-    range_witness = list(b) + list(s) + list(s2)
+    range_witness = []
+    range_witness.extend(b)
+    range_witness.extend(s)
+    range_witness.extend(s2)
 
     return (statement, D, range_witness)
 

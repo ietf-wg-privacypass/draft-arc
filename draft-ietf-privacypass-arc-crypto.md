@@ -327,7 +327,7 @@ Given a request context, the process for creating a credential request is as fol
 Inputs:
 - requestContext: Data, context for the credential request
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocols spec.
+  in the Sigma Protocols specification.
 
 Outputs:
 - request:
@@ -399,7 +399,7 @@ Inputs:
   - requestProof: String (ZKProof), a proof of correct generation
     of m1Enc and m2Enc.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocols spec.
+  in the Sigma Protocols specification.
 
 Outputs:
 - U: Element, a randomized generator for the response, `b*G`.
@@ -782,7 +782,7 @@ Inputs:
 - m1Enc: Element, first encrypted secret.
 - m2Enc: Element, second encrypted secret.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocols spec.
+  in the Sigma Protocols specification.
 
 Outputs:
 - proof: String (ZKProof)
@@ -919,7 +919,7 @@ Inputs:
 - X2Aux: Element, auxiliary point for X2.
 - HAux: Element, auxiliary point for generatorH.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocols spec.
+  in the Sigma Protocols specification.
 
 Outputs:
 - proof: String (ZKProof)
@@ -1140,7 +1140,7 @@ Inputs:
 - nonceCommit: Element, the Pedersen commitment to the nonce.
 - presentationLimit: Integer, the fixed presentation limit.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocols spec.
+  in the Sigma Protocols specification.
 
 Outputs:
 - presentationProof: ZKProof, a joint proof covering both
@@ -1391,7 +1391,7 @@ Inputs:
 - genGVar: Integer, variable index for generator G
 - genHVar: Integer, variable index for generator H
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocols spec.
+  in the Sigma Protocols specification.
 
 Outputs:
 - prover: Modified prover statement with range proof constraints added
@@ -1455,7 +1455,11 @@ def MakeRangeProofHelper(statement, nonce, nonceBlinding, presentationLimit,
     statement.append_equation(vars_D[i], [(vars_b[i], vars_D[i]), (vars_s2[i], genHVar)])
 
   # Build witness array: all b values, then all s values, then all s2 values
-  rangeWitness = b + s + s2
+  rangeWitness = []
+  rangeWitness.extend(b)
+  rangeWitness.extend(s)
+  rangeWitness.extend(s2)
+
   return (statement, D, rangeWitness)
 ~~~
 
