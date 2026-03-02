@@ -327,7 +327,7 @@ Given a request context, the process for creating a credential request is as fol
 Inputs:
 - requestContext: Data, context for the credential request
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols spec.
 
 Outputs:
 - request:
@@ -399,7 +399,7 @@ Inputs:
   - requestProof: String (ZKProof), a proof of correct generation
     of m1Enc and m2Enc.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols spec.
 
 Outputs:
 - U: Element, a randomized generator for the response, `b*G`.
@@ -449,7 +449,7 @@ struct {
   uint8 X1Aux[Ne];
   uint8 X2Aux[Ne];
   uint8 HAux[Ne];
-  uint8 responseProof[7*Ns];
+  uint8 responseProof[8*Ns];
 } CredentialResponse
 ~~~
 
@@ -782,7 +782,7 @@ Inputs:
 - m1Enc: Element, first encrypted secret.
 - m2Enc: Element, second encrypted secret.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols spec.
 
 Outputs:
 - proof: String (ZKProof)
@@ -919,7 +919,7 @@ Inputs:
 - X2Aux: Element, auxiliary point for X2.
 - HAux: Element, auxiliary point for generatorH.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols spec.
 
 Outputs:
 - proof: String (ZKProof)
@@ -1140,7 +1140,7 @@ Inputs:
 - nonceCommit: Element, the Pedersen commitment to the nonce.
 - presentationLimit: Integer, the fixed presentation limit.
 - rng: a cryptographically secure random number generator, as defined
-  in the Sigma Protocol spec {{SIGMA}}.
+  in the Sigma Protocols spec.
 
 Outputs:
 - presentationProof: ZKProof, a joint proof covering both
@@ -1186,12 +1186,10 @@ def MakePresentationProof(U, UPrimeCommit, m1Commit, tag, generatorT,
     [(m1Var, tagVar), (nonceVar, tagVar)])
   # 5. Add range proof constraints
   (statement, D) = MakeRangeProofHelper(statement, nonce,
-    nonceBlinding, presentationLimit, genGVar, genHVar)
+    nonceBlinding, presentationLimit, genGVar, genHVar, rng)
 
   # Build witness vector matching the scalar allocations
   witness = [credential.m1, z, -r, nonce, nonceBlinding]
-  # Add range proof witnesses (b[i], s[i], s2[i] for each bit)
-  # These are added by MakeRangeProofHelper
 
   session_id = contextString + "CredentialPresentation"
   prover = NISchnorrProofShake128P256(session_id, statement)
@@ -1383,7 +1381,7 @@ range proof constraints to the presentation proof statement.
 
 ~~~
 (prover, D) = MakeRangeProofHelper(prover, nonce, nonceBlinding, presentationLimit,
-                                   genGVar, genHVar)
+                                   genGVar, genHVar, rng)
 
 Inputs:
 - prover: Prover statement to which constraints will be added
@@ -1392,6 +1390,8 @@ Inputs:
 - presentationLimit: Integer, the maximum value of the range (exclusive).
 - genGVar: Integer, variable index for generator G
 - genHVar: Integer, variable index for generator H
+- rng: a cryptographically secure random number generator, as defined
+  in the Sigma Protocols spec.
 
 Outputs:
 - prover: Modified prover statement with range proof constraints added
