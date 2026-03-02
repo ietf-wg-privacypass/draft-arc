@@ -3168,18 +3168,8 @@ necessary for these properties to hold.<a href="#section-7-2" class="pilcrow">¶
         <h3 id="name-seeded-prng">
 <a href="#section-10.1" class="section-number selfRef">10.1. </a><a href="#name-seeded-prng" class="section-name selfRef">Seeded PRNG</a>
         </h3>
-<p id="section-10.1-1">For interoperability, the random number generator used for test vectors is implemented using the SeededPRNG defined in Section A.1 of <span>[<a href="#SIGMA" class="cite xref">SIGMA</a>]</span>. For ease of reference, the SeededPRNG API is:<a href="#section-10.1-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="section-10.1-2">
-<pre>
-class SeededPRNG:
-    def __init__(self, seed: bytes, order: int):
-        pass
-
-    def random_scalar(self) -&gt; Scalar:
-        pass
-</pre><a href="#section-10.1-2" class="pilcrow">¶</a>
-</div>
-<p id="section-10.1-3">The following sections contain test vectors for the ARC ciphersuites specified in this document.<a href="#section-10.1-3" class="pilcrow">¶</a></p>
+<p id="section-10.1-1">For interoperability, the random number generator used for test vectors is implemented using the SeededPRNG defined in Section A.1 of <span>[<a href="#SIGMA" class="cite xref">SIGMA</a>]</span>.<a href="#section-10.1-1" class="pilcrow">¶</a></p>
+<p id="section-10.1-2">The following sections contain test vectors for the ARC ciphersuites specified in this document.<a href="#section-10.1-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="arcv1-p256">
