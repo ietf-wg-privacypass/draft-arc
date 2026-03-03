@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-03-01T01:28:01.475799+00:00",
+  "timestamp": "2026-03-03T01:22:49.276986+00:00",
   "repo": "ietf-wg-privacypass/draft-arc",
   "labels": [
     {
@@ -866,15 +866,15 @@
       "id": "I_kwDONyB6uM7uZF9X",
       "title": "Lots of broken citations",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/62",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "martinthomson",
       "authorAssociation": "NONE",
       "assignees": [],
       "labels": [],
       "body": "kramdown-rfc won't expand references that appear in code.  There are lots of braces in code blocks that seem like they want to be references, but they are just code.",
       "createdAt": "2026-02-27T07:14:05Z",
-      "updatedAt": "2026-02-27T07:14:05Z",
-      "closedAt": null,
+      "updatedAt": "2026-03-02T22:08:38Z",
+      "closedAt": "2026-03-02T22:08:38Z",
       "comments": []
     }
   ],
@@ -3856,26 +3856,155 @@
       "id": "PR_kwDONyB6uM7G4N-x",
       "title": "Move sage code to use sigma/fiat-shamir code",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/pull/63",
-      "state": "OPEN",
+      "state": "MERGED",
       "author": "cathieyun",
       "authorAssociation": "COLLABORATOR",
       "assignees": [],
       "labels": [],
-      "body": "Migration of proof-of-concept (sage code) dependencies.\r\nThis is a continuation of the spec migration in this PR: https://github.com/ietf-wg-privacypass/draft-arc/pull/37\r\n\r\nTasks:\r\n\r\n- [x] Add the sigma spec repo as a git submodule: https://github.com/mmaker/draft-irtf-cfrg-sigma-protocols\r\n   - Note: we could add just the `poc` folder as a sparse subtree, but currently we're just adding the whole repository - specs and all. This is nice because we can also reference the spec for the corresponding API, I think?\r\n- [x] Remove poc code related to ZKPs and curves / groups, which is now redundant with the sigma spec poc proof and curve / group code\r\n- [x] Update imports so that the ARC proofs can access the new files\r\n- [x] Update the ARC proofs to use the new files, update call sites.\r\n- [x] Implement seeded PRNG for test vector generation, update tests to use sigma/f-s.\r\n- [ ] Fix some misc building / import bugs",
+      "body": "Migration of proof-of-concept (sage code) dependencies.\r\nThis is a continuation of the spec migration in this PR: https://github.com/ietf-wg-privacypass/draft-arc/pull/37\r\n\r\nThere are a lot of changes, but they can be largely summarized as:\r\n1. Deletion of curve and h2c files from `draft-arc/poc`. These are now imported through the sigma submodule instead, at `draft-arc/poc/sigma/poc/groups`.\r\n2. Addition of the sigma submodule at `draft-arc/poc/sigma`. New import functions to make the sigma code available, via sagelib.\r\n3. Updates of the test vectors. (Note that we are no longer outputting blinding factors for the sigma proofs, as this is not supported by the sigma poc).\r\n4. API changes for randomness generation: changing from `G.random_scalar(rng)` to `G.ScalarField.random(rng)`.\r\n5. API changes for multiplication: changing from `a * GenG` to `G.scalar_mult(a, genG)`. This makes it more explicit that it's a scalar mult, so that sage doesn't get confused. @armfazh pointed this out here: https://github.com/ietf-wg-privacypass/draft-arc/pull/64\r\n6. API changes for serialization/deserialization: changing from `G.serialize_scalar(z)` to `G.ScalarField.serialize([z])` and similar changes for group elements.\r\n7. API changes for TestDRNG: changing from `TestDRNG(\"init_string\")` to `TestDRNG(b\"init_string\", G.ScalarField)`.\r\n8. Some minor documentation / naming updates in the spec, especially to pass in the RNG when needed (some spots that were missed in the spec PR https://github.com/ietf-wg-privacypass/draft-arc/pull/37).\r\n\r\nTasks:\r\n\r\n- [x] Add the sigma spec repo as a git submodule: https://github.com/mmaker/draft-irtf-cfrg-sigma-protocols\r\n   - Note: we could add just the `poc` folder as a sparse subtree, but currently we're just adding the whole repository - specs and all. This is nice because we can also reference the spec for the corresponding API, I think?\r\n- [x] Remove poc code related to ZKPs and curves / groups, which is now redundant with the sigma spec poc proof and curve / group code\r\n- [x] Update imports so that the ARC proofs can access the new files\r\n- [x] Update the ARC proofs to use the new files, update call sites.\r\n- [x] Implement seeded PRNG for test vector generation, update tests to use sigma/f-s.\r\n- [x] Fix some misc building / import bugs",
       "createdAt": "2026-02-27T17:22:35Z",
-      "updatedAt": "2026-02-28T18:57:45Z",
+      "updatedAt": "2026-03-02T22:10:20Z",
       "baseRepository": "ietf-wg-privacypass/draft-arc",
       "baseRefName": "main",
       "baseRefOid": "167685551557c20eb45b792d168b810bd2fb475b",
       "headRepository": "ietf-wg-privacypass/draft-arc",
       "headRefName": "sigma-poc",
-      "headRefOid": "625bdaf7a166ea6f2c907ad9ca1d85d0cf093486",
-      "closedAt": null,
-      "mergedAt": null,
-      "mergedBy": null,
-      "mergeCommit": null,
-      "comments": [],
-      "reviews": []
+      "headRefOid": "5481937d28d9045648e8580ef6cd19cdb0cbbc38",
+      "closedAt": "2026-03-02T22:08:37Z",
+      "mergedAt": "2026-03-02T22:08:37Z",
+      "mergedBy": "cathieyun",
+      "mergeCommit": {
+        "oid": "3268903e38e9e3b30568c195318cfebf8a4180cf"
+      },
+      "comments": [
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "We need to add @armfazh  to the [ietf-wg-privacypass](https://github.com/ietf-wg-privacypass) admin list so he can be an official reviewer... In the meantime, will request his review manually.",
+          "createdAt": "2026-03-02T09:12:01Z",
+          "updatedAt": "2026-03-02T09:12:01Z"
+        },
+        {
+          "author": "armfazh",
+          "authorAssociation": "CONTRIBUTOR",
+          "body": "In the test vectors section, we didn't mention how the proofs were generated with respect to the rng used.",
+          "createdAt": "2026-03-02T21:38:41Z",
+          "updatedAt": "2026-03-02T21:38:41Z"
+        }
+      ],
+      "reviews": [
+        {
+          "id": "PRR_kwDONyB6uM7nINeE",
+          "commit": {
+            "abbreviatedOid": "48e51da"
+          },
+          "author": "chris-wood",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2026-03-02T17:39:40Z",
+          "updatedAt": "2026-03-02T17:42:57Z",
+          "comments": [
+            {
+              "originalPosition": 67,
+              "body": "Is this supposed to be concatenation, i.e., adding `rangeWitness` to the list?",
+              "createdAt": "2026-03-02T17:39:40Z",
+              "updatedAt": "2026-03-02T17:42:57Z"
+            },
+            {
+              "originalPosition": 5,
+              "body": "```suggestion\n  in the Sigma Protocols specification {{SIGMA}}.\n```",
+              "createdAt": "2026-03-02T17:40:16Z",
+              "updatedAt": "2026-03-02T17:42:57Z"
+            },
+            {
+              "originalPosition": 104,
+              "body": "I find this pretty confusing, even though it works out in Python. Can we express this using functions on lists rather than overloaded `+` operators?",
+              "createdAt": "2026-03-02T17:42:46Z",
+              "updatedAt": "2026-03-02T17:42:57Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDONyB6uM7nKnw6",
+          "commit": {
+            "abbreviatedOid": "48e51da"
+          },
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2026-03-02T19:50:50Z",
+          "updatedAt": "2026-03-02T20:20:36Z",
+          "comments": [
+            {
+              "originalPosition": 5,
+              "body": "References are broken in the code blocks, which is why I removed them. Martin pointed this out here:\nhttps://github.com/ietf-wg-privacypass/draft-arc/issues/62",
+              "createdAt": "2026-03-02T19:50:50Z",
+              "updatedAt": "2026-03-02T20:20:36Z"
+            },
+            {
+              "originalPosition": 67,
+              "body": "Yes - rangeWitness is also a list of scalars, returned from the `RangeProofHelper` function.",
+              "createdAt": "2026-03-02T19:54:14Z",
+              "updatedAt": "2026-03-02T20:20:36Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDONyB6uM7nLfv_",
+          "commit": {
+            "abbreviatedOid": "48e51da"
+          },
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2026-03-02T20:33:02Z",
+          "updatedAt": "2026-03-02T20:33:02Z",
+          "comments": [
+            {
+              "originalPosition": 104,
+              "body": "Done! Updated this to use `.extend()` in the spec and in the code.",
+              "createdAt": "2026-03-02T20:33:02Z",
+              "updatedAt": "2026-03-02T20:33:18Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDONyB6uM7nLiwZ",
+          "commit": {
+            "abbreviatedOid": "48e51da"
+          },
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "state": "COMMENTED",
+          "body": "",
+          "createdAt": "2026-03-02T20:36:15Z",
+          "updatedAt": "2026-03-02T20:36:15Z",
+          "comments": [
+            {
+              "originalPosition": 67,
+              "body": "Similar to the other comment, I used `.extend()` explicitly to show that `rangeWitness` is getting concatenated to the end of the presentation witness elements.",
+              "createdAt": "2026-03-02T20:36:15Z",
+              "updatedAt": "2026-03-02T20:36:15Z"
+            }
+          ]
+        },
+        {
+          "id": "PRR_kwDONyB6uM7nM2G9",
+          "commit": {
+            "abbreviatedOid": "5481937"
+          },
+          "author": "armfazh",
+          "authorAssociation": "CONTRIBUTOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2026-03-02T21:59:17Z",
+          "updatedAt": "2026-03-02T21:59:17Z",
+          "comments": []
+        }
+      ]
     },
     {
       "number": 64,
