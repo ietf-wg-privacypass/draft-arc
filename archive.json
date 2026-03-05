@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-03-03T01:22:49.276986+00:00",
+  "timestamp": "2026-03-05T01:20:13.973633+00:00",
   "repo": "ietf-wg-privacypass/draft-arc",
   "labels": [
     {
@@ -202,7 +202,7 @@
       "id": "I_kwDONyB6uM6rb8z_",
       "title": "Reference implementation cleanup: seeded PRNGs for test vectors",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/12",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "cathieyun",
       "authorAssociation": "COLLABORATOR",
       "assignees": [
@@ -213,8 +213,8 @@
       ],
       "body": "Currently we get deterministic ZKP output by using an incrementing counter for blinding:\nhttps://github.com/chris-wood/draft-arc/blob/main/poc/zkp.sage#L62\n\nWe should move to a seeded PRNG instead, this is better practice. \n\n(Suggestion from Michele / @mmaker)",
       "createdAt": "2025-02-24T21:47:37Z",
-      "updatedAt": "2026-02-27T05:13:37Z",
-      "closedAt": null,
+      "updatedAt": "2026-03-03T04:40:14Z",
+      "closedAt": "2026-03-03T04:40:14Z",
       "comments": [
         {
           "author": "cathieyun",
@@ -222,6 +222,13 @@
           "body": "Updated the spec to use sigma, which is using a seeded PRNG:\nhttps://github.com/ietf-wg-privacypass/draft-arc/pull/37\n\nWill also update the POC to be in line with that spec change.",
           "createdAt": "2026-02-27T05:13:37Z",
           "updatedAt": "2026-02-27T05:13:37Z"
+        },
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This is closed by a combination of:\n- the spec being updated to use sigma/f-s, which defines a seeded PRNG: https://github.com/ietf-wg-privacypass/draft-arc/pull/37\n- the poc being updated likewise: https://github.com/ietf-wg-privacypass/draft-arc/pull/63",
+          "createdAt": "2026-03-03T04:40:14Z",
+          "updatedAt": "2026-03-03T04:40:14Z"
         }
       ]
     },
@@ -230,7 +237,7 @@
       "id": "I_kwDONyB6uM6sL0dM",
       "title": "NotImplementedError",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/14",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "mmaker",
       "authorAssociation": "NONE",
       "assignees": [
@@ -241,9 +248,17 @@
       ],
       "body": "Python has a specific exception for not-implemented errors, called \"[NotImplementedError](https://docs.python.org/3/library/exceptions.html#NotImplementedError)\". This should be preferred to raising a string object \"Not implemented\"",
       "createdAt": "2025-03-01T09:56:10Z",
-      "updatedAt": "2025-06-13T20:07:56Z",
-      "closedAt": null,
-      "comments": []
+      "updatedAt": "2026-03-03T04:42:05Z",
+      "closedAt": "2026-03-03T04:42:05Z",
+      "comments": [
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This was addressed, and all \"Not Implemented\" error strings were removed, in the recent spec and code updates:\nhttps://github.com/ietf-wg-privacypass/draft-arc/pull/37\nhttps://github.com/ietf-wg-privacypass/draft-arc/pull/63",
+          "createdAt": "2026-03-03T04:42:05Z",
+          "updatedAt": "2026-03-03T04:42:05Z"
+        }
+      ]
     },
     {
       "number": 16,
@@ -369,7 +384,7 @@
       "id": "I_kwDONyB6uM6tbECF",
       "title": "Confusion between instances and objects",
       "url": "https://github.com/ietf-wg-privacypass/draft-arc/issues/21",
-      "state": "OPEN",
+      "state": "CLOSED",
       "author": "mmaker",
       "authorAssociation": "NONE",
       "assignees": [
@@ -380,8 +395,8 @@
       ],
       "body": "It seems there's some confusion about class attributes and instance attributes. For instance, in \n\nhttps://github.com/chris-wood/draft-arc/blob/main/poc/groups.sage#L220\n\nattributes like order, identity, etc can be accessed without instantiating the class (and it shouldn't be instantiated!)\nSame goes for other groups.\n\n",
       "createdAt": "2025-03-11T08:10:03Z",
-      "updatedAt": "2025-09-13T20:54:54Z",
-      "closedAt": null,
+      "updatedAt": "2026-03-03T04:42:55Z",
+      "closedAt": "2026-03-03T04:42:55Z",
       "comments": [
         {
           "author": "cathieyun",
@@ -389,6 +404,13 @@
           "body": "`groups.sage` is the standard code for EC groups used across many IETF drafts (same goes for many other common sage/py files in the poc). So I believe we are using these files as intended.",
           "createdAt": "2025-09-13T20:54:54Z",
           "updatedAt": "2025-09-13T20:54:54Z"
+        },
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "This was addressed by moving the spec and code to use the sigma/f-s definitions for groups:\n- spec migration: https://github.com/ietf-wg-privacypass/draft-arc/pull/37\n- poc migration: https://github.com/ietf-wg-privacypass/draft-arc/pull/63",
+          "createdAt": "2026-03-03T04:42:55Z",
+          "updatedAt": "2026-03-03T04:42:55Z"
         }
       ]
     },
@@ -654,7 +676,7 @@
       "labels": [],
       "body": "Firstly, thank you all for your incredible work on these specs.\n\n## Summary\n\nI'm building a privacy-preserving access control system for cloud services and have identified a need for zero-knowledge range proofs on credential validity timestamps (both `valid_from` and `valid_until`) within the ARC protocol. This would enable flexible credential expiration without revealing specific timestamps that could shrink anonymity sets.\n\n## Use Case\n\nMy architecture separates concerns across three layers:\n\n- **Client layer**: End-user software that holds credentials and payment methods\n- **Service layer**: Cloud services (search, AI inference, data sync) that must not know user identity\n- **Payment layer**: Issues credentials when users purchase access (e.g., \"$15 for one month of service\")\n\nThe design goal is that the service layer cannot correlate activity with the payment layer or between different requests.\n\n## Current Limitation\n\nARC provides excellent unlinkability properties for rate-limited access, but credential validity must currently be managed by encoding validity in the request context:\n\n```\nrequestContext = \"payment-session:xyz:expires:2025-01\"\n```\n\nThis value is available in the clear with each presentation, and is therefore at a high risk of leaking correlating information. To ensure a sufficiently large anonymity set, credential expirations must align to fixed calendar boundaries.\n\nIn smaller scale services and whenever the cost of a credential is high (paying $20 as opposed to simply passing a captcha) the number of credentials will be small, and the fixed interval must be wide to ensure adequate privacy.\n\nAdopting a large \"common epoch\" like calendar months has many consequences:\n- Proration is required for new mid-month users.\n- New credentials for immediate use are constrained to the number of days remaining this month.\n- It's impossible to reliably offer credentials with shorter lifespans (1 week, etc).\n- A single limit cannot span multiple months.\n\nIn deployments that can support a small \"common epoch\" like days without privacy concerns, the use of such small windows imposes its own constraints. Breaking a subscription for \"3000 requests per month\" into 30 credentials supporting \"100 requests per day\" meaningfully changes the supported for irregular usage patterns.\n\n## Desired Capability\n\nI'd like the client to be able to prove:\n\n```\nvalid_from <= current_time <= valid_until\n```\n\nWithout revealing the actual values of `valid_from` or `valid_until`.\n\nThis would require:\n\n1. **Credential attributes for timestamps**: The credential would include `valid_from` and `valid_until` as hidden attributes (similar to how the balance is hidden in ACT)\n2. **Range proofs during presentation**: The client proves the current timestamp falls within the validity window using a zero-knowledge range proof\n3. **Unlinkability preservation**: Different credentials with different validity windows remain indistinguishable to the verifier\n\n## Technical Considerations\n\n### Timestamp representation\n\nTimestamps could be represented as Unix epoch seconds (or milliseconds), fitting within the scalar field. A 64-bit timestamp provides sufficient range and precision.\n\n### Range proof construction\n\nThe existing open issue mentions Bulletproofs for hiding the nonce:\n\n> [[OPEN ISSUE: hide the nonce and replace the tag proof with a range proof built from something like Bulletproofs.]]\n\nSimilar techniques could apply to timestamp bounds. The client would prove:\n- `current_time - valid_from >= 0` (credential has started)\n- `valid_until - current_time >= 0` (credential hasn't expired)\n\n### Clock synchronization\n\nPractical deployments would need to handle clock skew between client and server. The server could:\n- Accept a small tolerance (e.g., \u00b160 seconds)\n\n## Benefits\n\n1. **Flexible validity periods**: Users can purchase arbitrary durations without aligning to calendar boundaries\n2. **Seamless renewal**: Users can purchase overlapping credentials without complexity\n3. **Preserved anonymity**: No timestamps revealed that could fingerprint users\n4. **Simplified tag management**: Server can still use course epochs for tag storage cleanup, but credential validity is decoupled from these operational concerns\n\n## Questions for the Working Group\n\n1. Is this functionality in scope for ARC, or would it be better suited as a separate extension?\n2. Are there performance concerns with adding two range proofs (for both bounds) to each presentation?\n3. How should clock synchronization be handled between client and server?\n4. Are there existing constructions or implementations that could be referenced for this? \n5. Would this interact with the existing open issue around hiding the nonce with Bulletproofs, or are these orthogonal concerns?\n\n(Note: A related discussion exists at\u00a0[https://github.com/SamuelSchlesinger/draft-act/issues/7](https://github.com/SamuelSchlesinger/draft-act/issues/7))\n## More About My Use Case\n\nI'm designing a commercial cloud service where privacy is a core feature. Users pay for access through a separate payment layer, then access services without those services knowing their identity. The current ARC design works adequately for my immediate needs using monthly epochs, but timestamp range proofs would significantly improve flexibility and user experience.\n\nI know that this isn't the primary use-case of the Privacy Pass project, but it appears deeply compatible in its goals and implementation. Using Privacy Pass as a privacy-preserving \"proof of purchase\" mechanism is a very interesting general use-case.\n\nI'm happy to provide additional details about the use case or discuss implementation considerations. While my cryptographic knowledge is fairly rudimentary, I'm willing to contribute wherever I can be helpful, particularly to testing or implementation work.\n",
       "createdAt": "2025-11-20T02:08:13Z",
-      "updatedAt": "2026-02-26T17:55:03Z",
+      "updatedAt": "2026-03-03T05:30:50Z",
       "closedAt": "2026-01-08T05:17:33Z",
       "comments": [
         {
@@ -684,6 +706,13 @@
           "body": "Thank you so much for your reply @cathieyun, and *my* apologies for such a delayed response (I somehow missed your message too).\n\nThanks also for answering these questions. A couple, I suppose, were more \"open\" questions inherently raised by the proposed feature (clock synchronization, etc).\n\nRE the scenario you proposed, I really hadn't considered that. Passing this value in the clear during presentation was something I was avoiding, but you're absolutely right that given few \"tiers\", they would each have sufficient anonymity sets to avoid this being an issue.\n\nMy focus has been on other components of this system over the past month, but I'm returning to this piece now.\n\nIs it helpful for me to share my evolving thoughts and experience as I work through this use case, or is it just noise?",
           "createdAt": "2026-02-26T17:55:02Z",
           "updatedAt": "2026-02-26T17:55:02Z"
+        },
+        {
+          "author": "cathieyun",
+          "authorAssociation": "COLLABORATOR",
+          "body": "I do think it's helpful for you to share your thoughts on the design requirements, as long as you don't expect us to immediately solve them :) It's always neat to see what real world constraints come up!\n\nIt's been really interesting to see how different applications use the same anonymous credential \"base building block\" to build many different systems. We purposefully designed ARC to be as simple as possible for *only* the rate limiting case (and then there was some scope creep to have redemption_context binding). But there are some other credential examples that have many more features, which might be useful to you!\n- Ooni recently released a blog post about some of their credential extensions:\nhttps://ooni.org/post/2025-announcing-ooni-new-anonymous-credential-system/\n- Of course, Tor has already deployed their anonymous credentials scheme, Lox: https://petsymposium.org/popets/2023/popets-2023-0029.pdf\n- The Google folks have been working on a credit tracking credential here: https://datatracker.ietf.org/doc/draft-schlesinger-cfrg-act/",
+          "createdAt": "2026-03-03T05:30:50Z",
+          "updatedAt": "2026-03-03T05:30:50Z"
         }
       ]
     },
